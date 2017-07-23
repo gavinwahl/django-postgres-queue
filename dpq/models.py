@@ -8,8 +8,8 @@ class Job(models.Model):
     created_at = models.DateTimeField(default=TransactionNow)
     execute_at = models.DateTimeField(default=TransactionNow)
     priority = models.PositiveIntegerField(
-            default=0,
-            help_text="Jobs with higher priority will be processed first."
+        default=0,
+        help_text="Jobs with higher priority will be processed first."
     )
     task = models.CharField(max_length=255)
     args = JSONField()
