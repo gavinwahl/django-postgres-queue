@@ -1,3 +1,5 @@
+import time
+import logging
 import select
 import abc
 
@@ -5,11 +7,14 @@ from .models import Job
 from django.db import connection, transaction
 
 
+
+
 class Queue(object, metaclass=abc.ABCMeta):
     at_most_once = False
     tasks = None
     job_model = Job
     notify_channel = None
+    logger = logging.getLogger(__name__)
 
     @abc.abstractmethod
     def run_once(self):
@@ -17,7 +22,10 @@ class Queue(object, metaclass=abc.ABCMeta):
 
     def run_job(self, job):
         task = self.tasks[job.task]
-        return task(self, job)
+        start_time = time.time()
+        retval = task(self, job)
+        self.logger.info('Processing %r took %0.4f seconds.', job, time.time() - start_time)
+        return retval
 
     def enqueue(self, task, args={}, execute_at=None, priority=None):
         assert task in self.tasks
@@ -64,22 +72,28 @@ class Queue(object, metaclass=abc.ABCMeta):
         with connection.cursor() as cur:
             cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
 
+    def _run_once(self):
+        job = self.job_model.dequeue()
+        if job:
+            self.logger.debug('Claimed %r', job)
+            try:
+                return job, self.run_job(job)
+            except Exception as e:
+                # Add job info to exception to be accessible for logging.
+                e.job = job
+                raise
+        else:
+            return None
+
+
 
 class AtMostOnceQueue(Queue):
     def run_once(self):
         assert not connection.in_atomic_block
-        job = self.job_model.dequeue()
-        if job:
-            return job, self.run_job(job)
-        else:
-            return None
+        return self._run_once()
 
 
 class AtLeastOnceQueue(Queue):
     @transaction.atomic
     def run_once(self):
-        job = self.job_model.dequeue()
-        if job:
-            return job, self.run_job(job)
-        else:
-            return None
+        return self._run_once()

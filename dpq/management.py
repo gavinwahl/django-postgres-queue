@@ -1,3 +1,4 @@
+import logging
 import time
 
 from django.core.management.base import BaseCommand
@@ -6,6 +7,7 @@ from django.core.management.base import BaseCommand
 class Worker(BaseCommand):
     # The queue to process. Subclass and set this.
     queue = None
+    logger = logging.getLogger(__name__)
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -27,11 +29,15 @@ class Worker(BaseCommand):
             self.queue.listen()
 
         count = 1
+        job = None
         while True:
             for i in range(count):
-                job = self.queue.run_once()
-                if not job:
-                    break
+                try:
+                    job = self.queue.run_once()
+                    if not job:
+                        break
+                except Exception as e:
+                    self.logger.exception('Error in %r: %r', e.job, e)
             if not job or self.listen:
                 count = self.wait()
                 if not count:
@@ -40,7 +46,9 @@ class Worker(BaseCommand):
 
     def wait(self):
         if self.listen:
-            return len(self.queue.wait(self.delay))
+            count = len(self.queue.wait(self.delay))
+            self.logger.debug('Woke up with %s NOTIFYs', count)
+            return notifies
         else:
             time.sleep(self.delay)
             return 1
