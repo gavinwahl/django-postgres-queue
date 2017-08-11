@@ -24,7 +24,16 @@ class Queue(object, metaclass=abc.ABCMeta):
         task = self.tasks[job.task]
         start_time = time.time()
         retval = task(self, job)
-        self.logger.info('Processing %r took %0.4f seconds. Task returned %r.', job, time.time() - start_time, retval)
+        self.logger.info(
+            'Processing %r took %0.4f seconds. Task returned %r.',
+            job, time.time() - start_time, retval,
+            extra={
+                'data': {
+                    'job': job.to_json(),
+                    'retval': retval,
+                }
+            }
+        )
         return retval
 
     def enqueue(self, task, args={}, execute_at=None, priority=None):
@@ -75,7 +84,11 @@ class Queue(object, metaclass=abc.ABCMeta):
     def _run_once(self, exclude_ids=[]):
         job = self.job_model.dequeue(exclude_ids=exclude_ids)
         if job:
-            self.logger.debug('Claimed %r', job)
+            self.logger.debug('Claimed %r.', job, extra={
+                'data': {
+                    'job': job.to_json(),
+                }
+            })
             try:
                 return job, self.run_job(job)
             except Exception as e:

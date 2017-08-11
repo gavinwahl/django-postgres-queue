@@ -37,7 +37,11 @@ class Worker(BaseCommand):
                     if not job:
                         break
                 except Exception as e:
-                    self.logger.exception('Error in %r: %r.', e.job, e)
+                    self.logger.exception('Error in %r: %r.', e.job, e, extra={
+                        'data': {
+                            'job': e.job.to_json(),
+                        },
+                    })
                     failed_tasks.add(e.job.id)
             self.wait()
             # We've run out of tasks, it's safe to put the failed ones back

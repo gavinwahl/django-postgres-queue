@@ -57,3 +57,13 @@ class Job(models.Model):
             return tasks[0]
         else:
             return None
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'created_at': self.created_at,
+            'execute_at': self.execute_at,
+            'priority': self.priority,
+            'task': self.task,
+            'args': self.args,
+        }
