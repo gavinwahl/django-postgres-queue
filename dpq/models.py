@@ -23,7 +23,7 @@ class Job(models.Model):
         return '%s: %s' % (self.id, self.task)
 
     @classmethod
-    def dequeue(cls):
+    def dequeue(cls, exclude_ids=[]):
         """
         Claims the first available task and returns it. If there are no
         tasks available, returns None.
@@ -43,12 +43,14 @@ class Job(models.Model):
                 SELECT id
                 FROM dpq_job
                 WHERE execute_at <= now()
+                  AND NOT id = ANY(%s)
                 ORDER BY priority DESC, created_at
                 FOR UPDATE SKIP LOCKED
                 LIMIT 1
             )
             RETURNING *;
-            """
+            """,
+            [list(exclude_ids)]
         ))
         assert len(tasks) <= 1
         if tasks:

@@ -24,7 +24,7 @@ class Queue(object, metaclass=abc.ABCMeta):
         task = self.tasks[job.task]
         start_time = time.time()
         retval = task(self, job)
-        self.logger.info('Processing %r took %0.4f seconds.', job, time.time() - start_time)
+        self.logger.info('Processing %r took %0.4f seconds. Task returned %r.', job, time.time() - start_time, retval)
         return retval
 
     def enqueue(self, task, args={}, execute_at=None, priority=None):
@@ -72,8 +72,8 @@ class Queue(object, metaclass=abc.ABCMeta):
         with connection.cursor() as cur:
             cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
 
-    def _run_once(self):
-        job = self.job_model.dequeue()
+    def _run_once(self, exclude_ids=[]):
+        job = self.job_model.dequeue(exclude_ids=exclude_ids)
         if job:
             self.logger.debug('Claimed %r', job)
             try:
@@ -88,12 +88,12 @@ class Queue(object, metaclass=abc.ABCMeta):
 
 
 class AtMostOnceQueue(Queue):
-    def run_once(self):
+    def run_once(self, exclude_ids=[]):
         assert not connection.in_atomic_block
-        return self._run_once()
+        return self._run_once(exclude_ids=exclude_ids)
 
 
 class AtLeastOnceQueue(Queue):
     @transaction.atomic
-    def run_once(self):
-        return self._run_once()
+    def run_once(self, exclude_ids=[]):
+        return self._run_once(exclude_ids=exclude_ids)

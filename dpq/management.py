@@ -28,27 +28,27 @@ class Worker(BaseCommand):
         if self.listen:
             self.queue.listen()
 
-        count = 1
-        job = None
+        # Prevents tasks that failed from blocking others.
+        failed_tasks = set()
         while True:
-            for i in range(count):
+            while True:
                 try:
-                    job = self.queue.run_once()
+                    job = self.queue.run_once(exclude_ids=failed_tasks)
                     if not job:
                         break
                 except Exception as e:
-                    self.logger.exception('Error in %r: %r', e.job, e)
-            if not job or self.listen:
-                count = self.wait()
-                if not count:
-                    # timeout, try for a task anway
-                    count = 1
+                    self.logger.exception('Error in %r: %r.', e.job, e)
+                    failed_tasks.add(e.job.id)
+            self.wait()
+            # We've run out of tasks, it's safe to put the failed ones back
+            # into consideration.
+            failed_tasks = set()
 
     def wait(self):
         if self.listen:
             count = len(self.queue.wait(self.delay))
-            self.logger.debug('Woke up with %s NOTIFYs', count)
-            return notifies
+            self.logger.debug('Woke up with %s NOTIFYs.', count)
+            return count
         else:
             time.sleep(self.delay)
             return 1
