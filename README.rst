@@ -56,6 +56,11 @@ Disadvantages
 - With at-least-once delivery, a postgres transaction has to be held open for
   the duration of the task. For long running tasks, this can cause table bloat
   and performance problems.
+- When a task crashes or raises an exception under at-least-once delivery, it
+  immediately becomes eligible to be retried. If you want to implement a retry
+  delay, you must catch exceptions and requeue the task with a delay. If your
+  task crashes without throwing an exception (eg SIGKILL), you could end up in
+  an endless retry loop that prevents other tasks from being processed.
 
 
 How it works
@@ -88,3 +93,85 @@ immediately commit the transaction, then process the task. For tasks that don't
 have any external effects and only do database work, the at-least-once behavior
 is actually exactly-once (because both the claiming of the job and the database
 work will commit or rollback together).
+
+
+Usage
+=====
+
+Requirements
+------------
+
+django-postgres-queue requires python 3, at least postgres 9.6 and at least
+Django 1.11.
+
+
+Installation
+------------
+
+Install with pip::
+
+  pip install django-postgres-queue
+
+Then add `'dpq'` to your `INSTALLED_APPS`. Run `manage.py migrate` to create
+the jobs table.
+
+Define a Queue subclass. This can go wherever you like and be named whatever
+you like. For example, `someapp/queue.py`:
+
+.. code:: python
+
+    from dpq.queue import AtLeastOnceQueue
+
+    class MyQueue(AtLeastOnceQueue):
+        notify_channel = 'my-queue'
+        tasks = {
+            # ...
+        }
+
+    queue = MyQueue()
+
+You will need to import this queue instance to queue or process tasks.
+
+django-postgres-queue comes with a management command base class that you can
+use to consume your tasks. It can be called whatever you like, for example in a
+`someapp/managment/commands/worker.py`:
+
+.. code:: python
+
+    from dpq.management import Worker
+
+    from someapp.queue import queue
+
+    class Command(Worker):
+        queue = queue
+
+Then you can run `manage.py worker` to start your worker.
+
+A task function takes two arguments -- the queue instance in use, and the Job
+instance for this task. The function can be defined anywhere and called
+whatever you like. Here's an example:
+
+.. code:: python
+
+    def debug_task(queue, job):
+        print(job.args)
+
+To register it as a task, add it to your `Queue` subclass:
+
+.. code:: python
+
+    tasks = {
+      'debug_task': debug_task
+    }
+
+The key is the task name, used to queue the task. It doesn't have to match the
+function name.
+
+To queue the task, use `enqueue` method on your queue instance:
+
+.. code:: python
+
+    queue.enqueue('debug_task', {'some_args': 0})
+
+Assuming you have a worker running for this queue, the task will be run
+immediately.
