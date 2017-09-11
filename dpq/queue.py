@@ -8,11 +8,12 @@ from django.db import connection, transaction
 
 
 class Queue(object, metaclass=abc.ABCMeta):
-    at_most_once = False
-    tasks = None
     job_model = Job
-    notify_channel = None
     logger = logging.getLogger(__name__)
+
+    def __init__(self, tasks, notify_channel=None):
+        self.tasks = tasks
+        self.notify_channel = notify_channel
 
     @abc.abstractmethod
     def run_once(self):

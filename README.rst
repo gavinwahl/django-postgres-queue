@@ -125,20 +125,20 @@ Install with pip::
 Then add ``'dpq'`` to your ``INSTALLED_APPS``. Run ``manage.py migrate`` to
 create the jobs table.
 
-Define a Queue subclass. This can go wherever you like and be named whatever
+Instantiate a queue object. This can go wherever you like and be named whatever
 you like. For example, ``someapp/queue.py``:
 
 .. code:: python
 
     from dpq.queue import AtLeastOnceQueue
 
-    class MyQueue(AtLeastOnceQueue):
-        notify_channel = 'my-queue'
-        tasks = {
+    queue = AtLeastOnceQueue(
+        tasks={
             # ...
-        }
+        },
+        notify_channel='my-queue',
+    )
 
-    queue = MyQueue()
 
 You will need to import this queue instance to queue or process tasks. Use
 ``AtLeastOnceQueue`` for at-least-once delivery, or ``AtMostOnceQueue`` for
@@ -168,15 +168,13 @@ whatever you like. Here's an example:
     def debug_task(queue, job):
         print(job.args)
 
-To register it as a task, add it to your ``Queue`` subclass:
+To register it as a task, add it to your queue instance:
 
 .. code:: python
 
-    class MyQueue(AtLeastOnceQueue):
-        # ...
-        tasks = {
-          'debug_task': debug_task
-        }
+    queue = AtLeastOnceQueue(tasks={
+        'debug_task': debug_task,
+    })
 
 The key is the task name, used to queue the task. It doesn't have to match the
 function name.

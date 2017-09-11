@@ -25,16 +25,15 @@ def repeater(queue, job):
     print('repeat {}; eta {}'.format(job, job.execute_at))
 
 
-class MyQueue(AtLeastOnceQueue):
-    notify_channel = 'channel'
-    tasks = {
+queue = AtLeastOnceQueue(
+    notify_channel='channel',
+    tasks={
         'foo': foo,
         'timer': timer,
         'repeater': repeater,
         'n_times': n_times,
-    }
-
-queue = MyQueue()
+    },
+)
 
 
 class Command(Worker):
