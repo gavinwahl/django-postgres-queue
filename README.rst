@@ -14,7 +14,7 @@ compelling advantages.
 - Transactional behavior and reliability.
 
   Adding tasks is atomic with respect to other database work. There is no need
-  to use `transaction.on_commit` hooks and there is no risk of a transaction
+  to use ``transaction.on_commit`` hooks and there is no risk of a transaction
   being committed but the tasks it queued being lost.
 
   Processing tasks is atomic with respect to other database work. Database work
@@ -112,11 +112,11 @@ Install with pip::
 
   pip install django-postgres-queue
 
-Then add `'dpq'` to your `INSTALLED_APPS`. Run `manage.py migrate` to create
-the jobs table.
+Then add ``'dpq'`` to your ``INSTALLED_APPS``. Run ``manage.py migrate`` to
+create the jobs table.
 
 Define a Queue subclass. This can go wherever you like and be named whatever
-you like. For example, `someapp/queue.py`:
+you like. For example, ``someapp/queue.py``:
 
 .. code:: python
 
@@ -134,7 +134,7 @@ You will need to import this queue instance to queue or process tasks.
 
 django-postgres-queue comes with a management command base class that you can
 use to consume your tasks. It can be called whatever you like, for example in a
-`someapp/managment/commands/worker.py`:
+``someapp/managment/commands/worker.py``:
 
 .. code:: python
 
@@ -145,7 +145,7 @@ use to consume your tasks. It can be called whatever you like, for example in a
     class Command(Worker):
         queue = queue
 
-Then you can run `manage.py worker` to start your worker.
+Then you can run ``manage.py worker`` to start your worker.
 
 A task function takes two arguments -- the queue instance in use, and the Job
 instance for this task. The function can be defined anywhere and called
@@ -156,7 +156,7 @@ whatever you like. Here's an example:
     def debug_task(queue, job):
         print(job.args)
 
-To register it as a task, add it to your `Queue` subclass:
+To register it as a task, add it to your ``Queue`` subclass:
 
 .. code:: python
 
@@ -167,7 +167,7 @@ To register it as a task, add it to your `Queue` subclass:
 The key is the task name, used to queue the task. It doesn't have to match the
 function name.
 
-To queue the task, use `enqueue` method on your queue instance:
+To queue the task, use ``enqueue`` method on your queue instance:
 
 .. code:: python
 
