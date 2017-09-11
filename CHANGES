@@ -1,4 +1,4 @@
-0.2.0 (unreleased)
+0.2.0 (2017-09-11)
 ==================
 
 - Don't force subclassing to create a queue, you can just instantiate one.
