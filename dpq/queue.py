@@ -7,8 +7,6 @@ from .models import Job
 from django.db import connection, transaction
 
 
-
-
 class Queue(object, metaclass=abc.ABCMeta):
     at_most_once = False
     tasks = None
@@ -97,7 +95,6 @@ class Queue(object, metaclass=abc.ABCMeta):
                 raise
         else:
             return None
-
 
 
 class AtMostOnceQueue(Queue):
