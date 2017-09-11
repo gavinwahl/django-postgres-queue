@@ -1,0 +1,3 @@
+django_extensions
+django>=1.11
+psycopg2
