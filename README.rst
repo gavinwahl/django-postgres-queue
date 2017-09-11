@@ -37,7 +37,8 @@ compelling advantages.
 
   By using postgres transactions, there is no possibility of jobs being left in
   a locked or ambiguous state if a worker dies. Tasks immediately become
-  available for another worker to pick up.
+  available for another worker to pick up. You can even ``kill -9`` a worker
+  and be sure your database and queue will be left in a consistent state.
 
 - Priority queues
 
@@ -95,13 +96,22 @@ is actually exactly-once (because both the claiming of the job and the database
 work will commit or rollback together).
 
 
+Comparison to Celery
+--------------------
+
+django-postgres-queue fills the same role as Celery. In addition to to using
+postgres as its backend, its intended to be simpler, without any of the funny
+business Celery does (metaprogramming, messing with logging, automatically
+importing modules). There is boilerplate to make up for the lack of
+metaprogramming, but I find that better than importing things by strings.
+
 Usage
 =====
 
 Requirements
 ------------
 
-django-postgres-queue requires python 3, at least postgres 9.6 and at least
+django-postgres-queue requires Python 3, at least postgres 9.5 and at least
 Django 1.11.
 
 
@@ -130,7 +140,9 @@ you like. For example, ``someapp/queue.py``:
 
     queue = MyQueue()
 
-You will need to import this queue instance to queue or process tasks.
+You will need to import this queue instance to queue or process tasks. Use
+``AtLeastOnceQueue`` for at-least-once delivery, or ``AtMostOnceQueue`` for
+at-most-once delivery.
 
 django-postgres-queue comes with a management command base class that you can
 use to consume your tasks. It can be called whatever you like, for example in a
@@ -160,9 +172,11 @@ To register it as a task, add it to your ``Queue`` subclass:
 
 .. code:: python
 
-    tasks = {
-      'debug_task': debug_task
-    }
+    class MyQueue(AtLeastOnceQueue):
+        # ...
+        tasks = {
+          'debug_task': debug_task
+        }
 
 The key is the task name, used to queue the task. It doesn't have to match the
 function name.
@@ -174,4 +188,34 @@ To queue the task, use ``enqueue`` method on your queue instance:
     queue.enqueue('debug_task', {'some_args': 0})
 
 Assuming you have a worker running for this queue, the task will be run
-immediately.
+immediately. The second argument must be a single json-serializeable value and
+will be available to the task as ``job.args``.
+
+
+Monitoring
+----------
+
+Tasks are just database rows stored in the ``dpq_job`` table, so you can
+monitor the system with SQL.
+
+To get a count of current tasks:
+
+.. code:: sql
+
+    SELECT count(*) FROM dpq_job WHERE execute_at <= now()
+
+
+This will include both tasks ready to process and tasks currently being
+processed. To see tasks currently being processed, we need visibility into
+postgres row locks. This can be provided by the `pgrowlocks extension
+<https://www.postgresql.org/docs/9.6/static/pgrowlocks.html>`_.  Once
+installed, this query will count currently-running tasks:
+
+.. code:: sql
+
+    SELECT count(*)
+    FROM pgrowlocks('dpq_job')
+    WHERE 'For Update' = ANY(modes);
+
+You could join the results of ``pgrowlocks`` with ``dpq_job`` to get the full
+list of tasks in progress if you want.
