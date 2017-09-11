@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name='django-postgres-queue',
     version='0.2.1.dev0',
-    packages=['dpq'],
+    packages=['dpq', 'dpq.migrations'],
     license='BSD',
     long_description=open('README.rst').read(),
     author="Gavin Wahl",
