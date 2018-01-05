@@ -217,3 +217,79 @@ installed, this query will count currently-running tasks:
 
 You could join the results of ``pgrowlocks`` with ``dpq_job`` to get the full
 list of tasks in progress if you want.
+
+Logging
+-------
+
+django-postgres-queue logs through Python's logging framework, so can be
+configured with the ``LOGGING`` dict in your Django settings. It will not log
+anything under the default config, so be sure to configure some form of
+logging. Everything is logged under the ``dpq`` namespace. Here is an example
+configuration that will log INFO level messages to stdout:
+
+.. code:: python
+
+    LOGGING = {
+        'version': 1,
+        'root': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+        },
+        'formatters': {
+            'verbose': {
+                'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s',
+            },
+        },
+        'handlers': {
+            'console': {
+                'level': 'INFO',
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose',
+            },
+        },
+        'loggers': {
+            'dpq': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+        }
+    }
+
+It would also be sensible to log WARNING and higher messages to something like
+Sentry:
+
+.. code:: python
+
+    LOGGING = {
+        'version': 1,
+        'root': {
+            'level': 'INFO',
+            'handlers': ['sentry', 'console'],
+        },
+        'formatters': {
+            'verbose': {
+                'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s',
+            },
+        },
+        'handlers': {
+            'console': {
+                'level': 'INFO',
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose',
+            },
+            'sentry': {
+                'level': 'WARNING',
+                'class': 'raven.contrib.django.handlers.SentryHandler',
+            },
+        },
+        'loggers': {
+            'dpq': {
+                'level': 'INFO',
+                'handlers': ['console', 'sentry'],
+                'propagate': False,
+            },
+        },
+    }
+
+You could also log to a file by using the built-in ``logging.FileHandler``.
