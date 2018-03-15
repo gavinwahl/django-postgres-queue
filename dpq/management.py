@@ -1,4 +1,5 @@
 import logging
+import signal
 import time
 
 from django.core.management.base import BaseCommand
@@ -22,7 +23,17 @@ class Worker(BaseCommand):
             help="Use LISTEN/NOTIFY to wait for events."
         )
 
+    def handle_shutdown(self, sig, frame):
+        self.logger.info('Waiting for active tasks to finish...')
+        self._shutdown = True
+
     def handle(self, **options):
+        self._shutdown = False
+
+        # Handle the signals for warm shutdown.
+        signal.signal(signal.SIGINT, self.handle_shutdown)
+        signal.signal(signal.SIGTERM, self.handle_shutdown)
+
         self.delay = options['delay']
         self.listen = options['listen']
         if self.listen:
@@ -43,6 +54,13 @@ class Worker(BaseCommand):
                         },
                     })
                     failed_tasks.add(e.job.id)
+
+                if self._shutdown:
+                    return
+
+            if self._shutdown:
+                return
+
             self.wait()
             # We've run out of tasks, it's safe to put the failed ones back
             # into consideration.

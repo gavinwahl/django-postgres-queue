@@ -25,6 +25,12 @@ def repeater(queue, job):
     print('repeat {}; eta {}'.format(job, job.execute_at))
 
 
+def long_task(queue, job):
+    print('job started: {}'.format(job.id))
+    time.sleep(10)
+    print('job finished: {}'.format(job.id))
+
+
 queue = AtLeastOnceQueue(
     notify_channel='channel',
     tasks={
@@ -32,6 +38,7 @@ queue = AtLeastOnceQueue(
         'timer': timer,
         'repeater': repeater,
         'n_times': n_times,
+        'long_task': long_task,
     },
 )
 
