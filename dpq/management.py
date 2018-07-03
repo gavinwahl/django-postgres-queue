@@ -1,4 +1,5 @@
 import logging
+import signal
 import time
 
 from django.core.management.base import BaseCommand
@@ -22,31 +23,55 @@ class Worker(BaseCommand):
             help="Use LISTEN/NOTIFY to wait for events."
         )
 
+    def handle_shutdown(self, sig, frame):
+        if self._in_task:
+            self.logger.info('Waiting for active tasks to finish...')
+            self._shutdown = True
+        else:
+            raise InterruptedError
+
+    def run_available_tasks(self):
+        """
+        Runs tasks continuously until there are no more available.
+        """
+        # Prevents tasks that failed from blocking others.
+        failed_tasks = set()
+        while True:
+            try:
+                self._in_task = True
+                job = self.queue.run_once(exclude_ids=failed_tasks)
+                self._in_task = False
+                if self._shutdown:
+                    raise InterruptedError
+                if not job:
+                    break
+            except Exception as e:
+                self.logger.exception('Error in %r: %r.', e.job, e, extra={
+                    'data': {
+                        'job': e.job.to_json(),
+                    },
+                })
+                failed_tasks.add(e.job.id)
+
     def handle(self, **options):
+        self._shutdown = False
+        self._in_task = False
+
         self.delay = options['delay']
         self.listen = options['listen']
         if self.listen:
             self.queue.listen()
+        try:
+            # Handle the signals for warm shutdown.
+            signal.signal(signal.SIGINT, self.handle_shutdown)
+            signal.signal(signal.SIGTERM, self.handle_shutdown)
 
-        # Prevents tasks that failed from blocking others.
-        failed_tasks = set()
-        while True:
             while True:
-                try:
-                    job = self.queue.run_once(exclude_ids=failed_tasks)
-                    if not job:
-                        break
-                except Exception as e:
-                    self.logger.exception('Error in %r: %r.', e.job, e, extra={
-                        'data': {
-                            'job': e.job.to_json(),
-                        },
-                    })
-                    failed_tasks.add(e.job.id)
-            self.wait()
-            # We've run out of tasks, it's safe to put the failed ones back
-            # into consideration.
-            failed_tasks = set()
+                self.run_available_tasks()
+                self.wait()
+        except InterruptedError:
+            # got shutdown signal
+            pass
 
     def wait(self):
         if self.listen:
