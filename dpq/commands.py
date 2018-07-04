@@ -40,8 +40,6 @@ class Worker(BaseCommand):
             self._in_task = True
             try:
                 job = self.queue.run_once(exclude_ids=failed_tasks)
-                if not job:
-                    break
             except Exception as e:
                 self.logger.exception('Error in %r: %r.', e.job, e, extra={
                     'data': {
@@ -52,6 +50,8 @@ class Worker(BaseCommand):
             self._in_task = False
             if self._shutdown:
                 raise InterruptedError
+            if not job:
+                break
 
     def handle(self, **options):
         self._shutdown = False
