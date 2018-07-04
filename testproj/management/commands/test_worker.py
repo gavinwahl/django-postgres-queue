@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from dpq.queue import AtLeastOnceQueue
 from dpq.decorators import repeat
-from dpq.management import Worker
+from dpq.commands import Worker
 
 
 def foo(queue, job):

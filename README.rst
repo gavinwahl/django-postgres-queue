@@ -150,7 +150,7 @@ use to consume your tasks. It can be called whatever you like, for example in a
 
 .. code:: python
 
-    from dpq.management import Worker
+    from dpq.commands import Worker
 
     from someapp.queue import queue
 
