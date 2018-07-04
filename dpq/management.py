@@ -37,12 +37,9 @@ class Worker(BaseCommand):
         # Prevents tasks that failed from blocking others.
         failed_tasks = set()
         while True:
+            self._in_task = True
             try:
-                self._in_task = True
                 job = self.queue.run_once(exclude_ids=failed_tasks)
-                self._in_task = False
-                if self._shutdown:
-                    raise InterruptedError
                 if not job:
                     break
             except Exception as e:
@@ -52,6 +49,9 @@ class Worker(BaseCommand):
                     },
                 })
                 failed_tasks.add(e.job.id)
+            self._in_task = False
+            if self._shutdown:
+                raise InterruptedError
 
     def handle(self, **options):
         self._shutdown = False
