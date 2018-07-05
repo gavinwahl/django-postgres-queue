@@ -37,6 +37,7 @@ class Worker(BaseCommand):
         # Prevents tasks that failed from blocking others.
         failed_tasks = set()
         while True:
+            job = None
             self._in_task = True
             try:
                 job = self.queue.run_once(exclude_ids=failed_tasks)
