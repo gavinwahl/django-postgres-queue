@@ -1,7 +1,8 @@
-0.2.2 (unreleased)
+0.3.0 (unreleased)
 ==================
 
-- Nothing changed yet.
+- Implement warm shutdown on TERM and INT signals.
+- Rename management module to dpq.commands.
 
 
 0.2.1 (2017-09-11)
