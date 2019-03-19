@@ -1,4 +1,4 @@
-0.3.0 (unreleased)
+0.3.0 (2019-03-19)
 ==================
 
 - Implement warm shutdown on TERM and INT signals.
