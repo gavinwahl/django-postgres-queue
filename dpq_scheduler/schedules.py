@@ -14,7 +14,7 @@ def repeater(delta):
 
 def every_day_at(t, tz):
     def schedule(prev):
-        todays_at = combine(prev.date(), t, tz)
+        todays_at = combine(prev.astimezone(tz).date(), t, tz)
         if prev < todays_at:
             return todays_at
         else:
@@ -24,6 +24,7 @@ def every_day_at(t, tz):
 
 def every_dow_at(dow, at, tz):
     def schedule(prev):
+        prev = prev.astimezone(tz)
         start_of_this_week = prev.date() - datetime.timedelta(days=prev.date().weekday())
         this_weeks_at = combine(start_of_this_week + datetime.timedelta(days=dow), at, tz)
         if prev < this_weeks_at:
