@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'testproj',
     'dpq',
+    'dpq_scheduler',
 ]
 
 MIDDLEWARE = [
@@ -143,6 +144,10 @@ LOGGING = {
         'dpq': {
             'handlers': ['console'],
             'level': 'DEBUG',
-        }
+        },
+        'dpq_scheduler': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
     },
 }
