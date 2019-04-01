@@ -1,8 +1,10 @@
 import logging
+import os
 import signal
 import time
 
 from django.core.management.base import BaseCommand
+from django.db import connection
 
 
 class Worker(BaseCommand):
@@ -60,6 +62,14 @@ class Worker(BaseCommand):
 
         self.delay = options['delay']
         self.listen = options['listen']
+
+        pid = os.getpid()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SET application_name TO %s",
+                [f'dpq#{pid}'],
+            )
+
         if self.listen:
             self.queue.listen()
         try:
