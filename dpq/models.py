@@ -3,6 +3,14 @@ from django.contrib.postgres.functions import TransactionNow
 from django.contrib.postgres.fields import JSONField
 
 
+class JobQuerySet(models.QuerySet):
+    def enqueued(self):
+        return self.filter(execute_at__lte=TransactionNow())
+
+    def scheduled(self):
+        return self.filter(execute_at__gt=TransactionNow())
+
+
 class Job(models.Model):
     id = models.BigAutoField(primary_key=True)
     created_at = models.DateTimeField(default=TransactionNow)
@@ -13,6 +21,8 @@ class Job(models.Model):
     )
     task = models.CharField(max_length=255)
     args = JSONField()
+
+    objects = JobQuerySet.as_manager()
 
     class Meta:
         indexes = [
