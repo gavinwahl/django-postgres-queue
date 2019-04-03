@@ -65,10 +65,7 @@ class Worker(BaseCommand):
 
         pid = os.getpid()
         with connection.cursor() as cursor:
-            cursor.execute(
-                "SET application_name TO %s",
-                [f'dpq#{pid}'],
-            )
+            cursor.execute("SET application_name TO %s", ['dpq#{}'.format(pid)])
 
         if self.listen:
             self.queue.listen()
