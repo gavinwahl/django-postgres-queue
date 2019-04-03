@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'testproj',
     'dpq',
     'dpq_scheduler',
+    'dpq_monitoring',
 ]
 
 MIDDLEWARE = [
