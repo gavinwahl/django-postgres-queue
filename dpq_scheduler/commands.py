@@ -3,7 +3,7 @@ import pytz
 import logging
 import datetime
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction, connection
 
 from dpq_scheduler.models import LastScheduledFor
@@ -20,6 +20,8 @@ class Scheduler(BaseCommand):
     logger = logging.getLogger(__name__)
 
     def handle(self, **options):
+        self.validate_tasks()
+
         while True:
             delay = self.one_round()
             self.logger.debug('Sleeping %s.', delay)
@@ -63,3 +65,8 @@ class Scheduler(BaseCommand):
         ).delete()
 
         return max(next_wakeup - now, datetime.timedelta(seconds=0))
+
+    def validate_tasks(self):
+        missing_tasks = set(self.tasks.keys()) - set(self.queue.tasks.keys())
+        if missing_tasks:
+            raise CommandError("Tasks in schedule but missing from queue: %r" % missing_tasks)
