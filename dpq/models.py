@@ -7,7 +7,7 @@ class Job(models.Model):
     id = models.BigAutoField(primary_key=True)
     created_at = models.DateTimeField(default=TransactionNow)
     execute_at = models.DateTimeField(default=TransactionNow)
-    priority = models.PositiveIntegerField(
+    priority = models.IntegerField(
         default=0,
         help_text="Jobs with higher priority will be processed first."
     )

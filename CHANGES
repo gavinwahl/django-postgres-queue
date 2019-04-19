@@ -2,6 +2,7 @@
 ==================
 
 - Add dpq_scheduler, a replacement for celery beat.
+- Allow priorities to be negative.
 
 
 0.3.0 (2019-03-19)
