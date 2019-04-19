@@ -1,4 +1,4 @@
-0.4.0 (unreleased)
+0.4.0 (2019-04-19)
 ==================
 
 - Add dpq_scheduler, a replacement for celery beat.
