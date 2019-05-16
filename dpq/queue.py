@@ -52,6 +52,7 @@ class Queue(object, metaclass=abc.ABCMeta):
         return job
 
     def listen(self):
+        assert self.notify_channel, "You must set a notify channel in order to listen."
         with connection.cursor() as cur:
             cur.execute('LISTEN "{}";'.format(self.notify_channel))
 
