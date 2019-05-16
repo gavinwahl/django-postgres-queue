@@ -1,7 +1,8 @@
-0.4.1 (unreleased)
+0.4.1 (2019-05-16)
 ==================
 
-- Nothing changed yet.
+- Handle exceptions raised outside of job execution
+- Don't allow listening without a notify channel
 
 
 0.4.0 (2019-04-19)
