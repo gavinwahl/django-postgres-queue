@@ -42,12 +42,15 @@ class Worker(BaseCommand):
             try:
                 job = self.queue.run_once(exclude_ids=failed_tasks)
             except Exception as e:
-                self.logger.exception('Error in %r: %r.', e.job, e, extra={
-                    'data': {
-                        'job': e.job.to_json(),
-                    },
-                })
-                failed_tasks.add(e.job.id)
+                if hasattr(e, 'job'):
+                    self.logger.exception('Error in %r: %r.', e.job, e, extra={
+                        'data': {
+                            'job': e.job.to_json(),
+                        },
+                    })
+                    failed_tasks.add(e.job.id)
+                else:
+                    raise
             self._in_task = False
             if self._shutdown:
                 raise InterruptedError
