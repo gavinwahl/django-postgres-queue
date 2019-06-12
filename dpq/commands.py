@@ -45,12 +45,15 @@ class Worker(BaseCommand):
                 job = self.queue.run_once(exclude_ids=failed_tasks)
             except Exception as e:
                 if hasattr(e, 'job'):
-                    self.logger.exception('Error in %r: %r.', e.job, e, extra={
+                    # Make sure we do at least one more iteration of the loop
+                    # with the failed task excluded.
+                    job = e.job
+                    self.logger.exception('Error in %r: %r.', job, e, extra={
                         'data': {
-                            'job': e.job.to_json(),
+                            'job': job.to_json(),
                         },
                     })
-                    failed_tasks.add(e.job.id)
+                    failed_tasks.add(job.id)
                 else:
                     raise
             self._in_task = False

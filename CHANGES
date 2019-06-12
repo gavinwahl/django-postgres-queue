@@ -1,7 +1,8 @@
 0.4.3 (unreleased)
 ==================
 
-- Nothing changed yet.
+- Fix failed task processing to allow progress on other tasks when there is a
+  task consistently failing.
 
 
 0.4.2 (2019-05-17)
