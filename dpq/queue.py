@@ -3,7 +3,7 @@ import logging
 import select
 import abc
 
-from .models import Job
+from .models import Job, DEFAULT_QUEUE_NAME
 from django.db import connection, transaction
 
 
@@ -11,9 +11,10 @@ class Queue(object, metaclass=abc.ABCMeta):
     job_model = Job
     logger = logging.getLogger(__name__)
 
-    def __init__(self, tasks, notify_channel=None):
+    def __init__(self, tasks, notify_channel=None, queue=DEFAULT_QUEUE_NAME):
         self.tasks = tasks
         self.notify_channel = notify_channel
+        self.queue = queue
 
     @abc.abstractmethod
     def run_once(self):
@@ -37,10 +38,7 @@ class Queue(object, metaclass=abc.ABCMeta):
 
     def enqueue(self, task, args={}, execute_at=None, priority=None):
         assert task in self.tasks
-        kwargs = {
-            'task': task,
-            'args': args,
-        }
+        kwargs = {"task": task, "args": args, "queue": self.queue}
         if execute_at is not None:
             kwargs['execute_at'] = execute_at
         if priority is not None:
@@ -82,7 +80,7 @@ class Queue(object, metaclass=abc.ABCMeta):
             cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
 
     def _run_once(self, exclude_ids=[]):
-        job = self.job_model.dequeue(exclude_ids=exclude_ids)
+        job = self.job_model.dequeue(exclude_ids=exclude_ids, queue=self.queue)
         if job:
             self.logger.debug('Claimed %r.', job, extra={
                 'data': {
