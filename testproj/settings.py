@@ -124,12 +124,12 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 LOGGING = {
-    'version': 1,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'level': 'DEBUG',
-            'formatter': 'verbose',
+    "version": 1,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "WARN",
+            "formatter": "verbose",
         },
     },
     'formatters': {
