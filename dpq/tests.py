@@ -47,3 +47,18 @@ class DpqQueueTests(TestCase):
         job = Job.dequeue(queue=queue.queue)
         self.assertEqual(job.args["count"], 5)
         self.assertEqual(job.queue, DEFAULT_QUEUE_NAME)
+
+    def test_same_name_queues_can_fetch_tasks(self):
+        NAME = "machine_a"
+        queue = AtLeastOnceQueue(tasks=["demotask"], queue=NAME)
+
+        queue2 = AtLeastOnceQueue(tasks=["demotask"], queue=NAME)
+
+        queue.enqueue("demotask", {"count": 5})
+        job = Job.dequeue(queue=queue2.queue)
+        # job is dequeued..
+        self.assertNotEqual(job, None)
+
+        # now the job should be gone...
+        job = Job.dequeue(queue=queue.queue)
+        self.assertEqual(job, None)
