@@ -4,16 +4,17 @@ from .models import Job, DEFAULT_QUEUE_NAME
 from .queue import AtLeastOnceQueue
 
 
-class DpqQueueTests(TestCase):
-    def demotask(queue, job):
-        return job.id
+def demotask(queue, job):
+    return job.id
 
+
+class DpqQueueTests(TestCase):
     def test_create_job_on_queue(self):
         """
         Creates a basic queue with a name, and puts the job onto the queue.
         """
         NAME = "machine_a"
-        queue = AtLeastOnceQueue(tasks=["demotask"], queue=NAME)
+        queue = AtLeastOnceQueue(tasks={"demotask": demotask}, queue=NAME)
 
         queue.enqueue("demotask", {"count": 5})
         job = Job.dequeue(queue=queue.queue)
@@ -25,10 +26,10 @@ class DpqQueueTests(TestCase):
         Test that a job added to one queue won't be visible on another queue.
         """
         NAME = "machine_a"
-        queue = AtLeastOnceQueue(tasks=["demotask"], queue=NAME)
+        queue = AtLeastOnceQueue(tasks={"demotask": demotask}, queue=NAME)
 
         NAME2 = "machine_b"
-        queue2 = AtLeastOnceQueue(tasks=["demotask"], queue=NAME2)
+        queue2 = AtLeastOnceQueue(tasks={"demotask": demotask}, queue=NAME2)
 
         queue.enqueue("demotask", {"count": 5})
         job = Job.dequeue(queue=queue2.queue)
@@ -41,7 +42,7 @@ class DpqQueueTests(TestCase):
         """
         Test jobs can be added without a queue name defined.
         """
-        queue = AtLeastOnceQueue(tasks=["demotask"])
+        queue = AtLeastOnceQueue(tasks={"demotask": demotask})
 
         queue.enqueue("demotask", {"count": 5})
         job = Job.dequeue(queue=queue.queue)
@@ -50,9 +51,9 @@ class DpqQueueTests(TestCase):
 
     def test_same_name_queues_can_fetch_tasks(self):
         NAME = "machine_a"
-        queue = AtLeastOnceQueue(tasks=["demotask"], queue=NAME)
+        queue = AtLeastOnceQueue(tasks={"demotask": demotask}, queue=NAME)
 
-        queue2 = AtLeastOnceQueue(tasks=["demotask"], queue=NAME)
+        queue2 = AtLeastOnceQueue(tasks={"demotask": demotask}, queue=NAME)
 
         queue.enqueue("demotask", {"count": 5})
         job = Job.dequeue(queue=queue2.queue)
