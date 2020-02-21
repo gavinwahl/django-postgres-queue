@@ -23,10 +23,13 @@ class Job(models.Model):
         return '%s: %s' % (self.id, self.task)
 
     @classmethod
-    def dequeue(cls, exclude_ids=[]):
+    def dequeue(cls, exclude_ids=[], tasks=None):
         """
         Claims the first available task and returns it. If there are no
         tasks available, returns None.
+
+        exclude_ids: List[int] - excludes jobs with these ids
+        tasks: Optional[List[str]] - filters by jobs with these tasks.
 
         For at-most-once delivery, commit the transaction before
         processing the task. For at-least-once delivery, dequeue and
@@ -36,25 +39,31 @@ class Job(models.Model):
         .save(force_insert=True) on the returned object.
         """
 
-        tasks = list(cls.objects.raw(
+        if tasks is not None:
+            WHERE = "WHERE execute_at <= now() AND NOT id = ANY(%s) AND TASK = ANY(%s)"
+            args = [list(exclude_ids), tasks]
+        else:
+            WHERE = "WHERE execute_at <= now() AND NOT id = ANY(%s)"
+            args = [list(exclude_ids)]
+
+        jobs = list(cls.objects.raw(
             """
             DELETE FROM dpq_job
             WHERE id = (
                 SELECT id
                 FROM dpq_job
-                WHERE execute_at <= now()
-                  AND NOT id = ANY(%s)
+                {WHERE}
                 ORDER BY priority DESC, created_at
                 FOR UPDATE SKIP LOCKED
                 LIMIT 1
             )
             RETURNING *;
-            """,
-            [list(exclude_ids)]
+            """.format(WHERE=WHERE),
+            args
         ))
-        assert len(tasks) <= 1
-        if tasks:
-            return tasks[0]
+        assert len(jobs) <= 1
+        if jobs:
+            return jobs[0]
         else:
             return None
 

@@ -82,7 +82,7 @@ class Queue(object, metaclass=abc.ABCMeta):
             cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
 
     def _run_once(self, exclude_ids=[]):
-        job = self.job_model.dequeue(exclude_ids=exclude_ids)
+        job = self.job_model.dequeue(exclude_ids=exclude_ids, tasks=list(self.tasks))
         if job:
             self.logger.debug('Claimed %r.', job, extra={
                 'data': {
