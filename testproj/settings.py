@@ -78,9 +78,12 @@ WSGI_APPLICATION = 'testproj.wsgi.application'
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'dpq_testproj',
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "dpq_testproj",
+        "USER": "dpq",
+        "PASSWORD": "dpq",
+        "TEST": {"NAME": "dpq_testproj"},
     }
 }
 
