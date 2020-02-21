@@ -296,11 +296,11 @@ You could also log to a file by using the built-in ``logging.FileHandler``.
 
 Useful Recipes
 ==============
-For those that are homesick for features provided by other task queues, we endeavour to provide some tasty recipes.
+These recipes aren't officially supported features of `django-postgres-queue`. We provide them so that you can mimick some of the common features in other task queues.
 
 `ALWAYS_EAGER`
 --------------
-Celery uses the `ALWAYS_EAGER` setting to run a task immediately, without queueing it for worker. It could be used during tests, and while debugging in a development environment with any workers turned off.
+Celery uses the `ALWAYS_EAGER` setting to run a task immediately, without queueing it for a worker. It could be used during tests, and while debugging in a development environment with any workers turned off.
 
 .. code:: python
 
