@@ -307,7 +307,7 @@ Celery uses the `ALWAYS_EAGER` setting to run a task immediately, without queuei
     class EagerAtLeastOnceQueue(AtLeastOnceQueue):
         def enqueue(self, *args, **kwargs):
             job = super().enqueue(*args, **kwargs)
-            if settings.DPQ_ALWAYS_EAGER:
+            if settings.CELERY_ALWAYS_EAGER:
                 self.run_job(job)
             return job
 
