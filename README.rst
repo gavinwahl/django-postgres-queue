@@ -293,3 +293,25 @@ Sentry:
     }
 
 You could also log to a file by using the built-in ``logging.FileHandler``.
+
+Useful Recipes
+==============
+For those that are homesick for features provided by other task queues, we endeavour to provide some tasty recipes.
+
+`ALWAYS_EAGER`
+--------------
+Celery uses the `ALWAYS_EAGER` setting to run a task immediately, without queueing it for worker. It could be used during tests, and while debugging in a development environment with any workers turned off.
+```
+class EagerAtLeastOnceQueue(AtLeastOnceQueue):
+    def enqueue(self, *args, **kwargs):
+        job = super().enqueue(*args, **kwargs)
+        if settings.DPQ_ALWAYS_EAGER:
+            self.run_job(job)
+        return job
+```
+
+
+
+
+
+
