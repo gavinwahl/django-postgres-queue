@@ -293,3 +293,20 @@ Sentry:
     }
 
 You could also log to a file by using the built-in ``logging.FileHandler``.
+
+Useful Recipes
+==============
+These recipes aren't officially supported features of `django-postgres-queue`. We provide them so that you can mimick some of the common features in other task queues.
+
+`CELERY_ALWAYS_EAGER`
+--------------
+Celery uses the `CELERY_ALWAYS_EAGER` setting to run a task immediately, without queueing it for a worker. It could be used during tests, and while debugging in a development environment with any workers turned off.
+
+.. code:: python
+
+    class EagerAtLeastOnceQueue(AtLeastOnceQueue):
+        def enqueue(self, *args, **kwargs):
+            job = super().enqueue(*args, **kwargs)
+            if settings.QUEUE_ALWAYS_EAGER:
+                self.run_job(job)
+            return job
