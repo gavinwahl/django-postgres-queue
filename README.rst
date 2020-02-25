@@ -296,11 +296,28 @@ You could also log to a file by using the built-in ``logging.FileHandler``.
 
 Useful Recipes
 ==============
-These recipes aren't officially supported features of `django-postgres-queue`. We provide them so that you can mimick some of the common features in other task queues.
+These recipes aren't officially supported features of `django-postgres-queue`.
+We provide them so that you can mimic some of the common features in other
+task queues.
+
+Running tasks in tests
+----------------------
+When testing code that queues tasks, it can be useful to explicitly run all the
+pending tasks from your test. To do this, you can use:
+
+.. code:: python
+
+    while queue.run_once(): pass
+
+This will run all the tasks that have been queued so far, and you can now
+assert that they did the right thing.
+
 
 `CELERY_ALWAYS_EAGER`
---------------
-Celery uses the `CELERY_ALWAYS_EAGER` setting to run a task immediately, without queueing it for a worker. It could be used during tests, and while debugging in a development environment with any workers turned off.
+---------------------
+Celery uses the `CELERY_ALWAYS_EAGER` setting to run a task immediately,
+without queueing it for a worker. It could be used during tests, and while
+debugging in a development environment with any workers turned off.
 
 .. code:: python
 
