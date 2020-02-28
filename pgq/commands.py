@@ -8,7 +8,7 @@ from django.core.management.base import BaseCommand
 from django.db import connection
 
 from .exceptions import PgqException, PgqNoDefinedQueue
-from .queues import Queue
+from .queue import Queue
 
 
 class Worker(BaseCommand):

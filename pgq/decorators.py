@@ -4,7 +4,7 @@ import random
 from typing import Any, Callable, Optional, Type, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .queues import Queue
+    from .queue import Queue
     from .models import Job
 
     DelayFnType = Callable[[int], datetime.timedelta]
