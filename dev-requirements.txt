@@ -1,0 +1,5 @@
+Django==3.0.3
+mypy==0.761
+mypy-extensions==0.4.3
+psycopg2==2.8.4
+typing-extensions==3.7.4.1
