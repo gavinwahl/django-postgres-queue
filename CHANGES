@@ -1,7 +1,10 @@
-0.4.4 (unreleased)
+0.5.0 (2020-02-28)
 ==================
 
-- Nothing changed yet.
+- fork and rename to django-pg-queue
+- queues separated by queue name
+- fixes bug where a queue attempts to work on a job that isn't its own.
+- black formatting; mypy types; code cleanup
 
 
 0.4.3 (2019-06-12)

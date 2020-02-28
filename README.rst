@@ -1,7 +1,10 @@
-django-postgres-queue
+django-pg-queue
 =====================
 
-django-postgres-queue is a task queue system for Django backed by postgres.
+django-pg-queue is a task queue system for Django backed by postgres.
+
+It was forked from the wonderful and simpler django-pg-queue (https://github.com/gavinwahl/django-pg-queue/)
+Written by Gavin Wahl.
 
 
 Why postgres?
@@ -46,14 +49,18 @@ compelling advantages.
   on, it's easy to ensure high-priority tasks are processed first.
 
 
+- Queues
+
+  Simply implemented by allowing filtering by a queue name in the query.
+
+
+
 Disadvantages
 -------------
 
 - Lower throughput than a dedicated queue server.
 - Harder to scale a relational database than a dedicated queue server.
-- Thundering herd. Postgres has no way to notify a single worker to wake up, so
-  we can either wake every single worker up when a task is queued with
-  LISTEN/NOTIFY, or workers have to short-poll.
+- Thundering herd. Postgres will notify all workers who LISTEN for the same name.
 - With at-least-once delivery, a postgres transaction has to be held open for
   the duration of the task. For long running tasks, this can cause table bloat
   and performance problems.
@@ -67,7 +74,7 @@ Disadvantages
 How it works
 ------------
 
-django-postgres-queue is able to claim, process, and remove a task in a single
+django-pg-queue is able to claim, process, and remove a task in a single (simplified)
 query.
 
 .. code:: sql
@@ -99,11 +106,8 @@ work will commit or rollback together).
 Comparison to Celery
 --------------------
 
-django-postgres-queue fills the same role as Celery. In addition to to using
-postgres as its backend, its intended to be simpler, without any of the funny
-business Celery does (metaprogramming, messing with logging, automatically
-importing modules). There is boilerplate to make up for the lack of
-metaprogramming, but I find that better than importing things by strings.
+django-pg-queue fills the same role as Celery. You must use postgres as the backend
+and the library is small enough that you can read and understand all the code.
 
 Usage
 =====
@@ -111,8 +115,8 @@ Usage
 Requirements
 ------------
 
-django-postgres-queue requires Python 3, at least postgres 9.5 and at least
-Django 1.11.
+django-pg-queue requires Python 3, at least postgres 9.5 and at least
+Django 2.1.
 
 
 Installation
@@ -120,7 +124,7 @@ Installation
 
 Install with pip::
 
-  pip install django-postgres-queue
+  pip install django-pg-queue
 
 Then add ``'dpq'`` to your ``INSTALLED_APPS``. Run ``manage.py migrate`` to
 create the jobs table.
@@ -136,6 +140,7 @@ you like. For example, ``someapp/queue.py``:
         tasks={
             # ...
         },
+        queue='my-queue',
         notify_channel='my-queue',
     )
 
@@ -144,7 +149,7 @@ You will need to import this queue instance to queue or process tasks. Use
 ``AtLeastOnceQueue`` for at-least-once delivery, or ``AtMostOnceQueue`` for
 at-most-once delivery.
 
-django-postgres-queue comes with a management command base class that you can
+django-pg-queue comes with a management command base class that you can
 use to consume your tasks. It can be called whatever you like, for example in a
 ``someapp/managment/commands/worker.py``:
 
@@ -174,7 +179,7 @@ To register it as a task, add it to your queue instance:
 
     queue = AtLeastOnceQueue(tasks={
         'debug_task': debug_task,
-    })
+    }, queue='my-queue')
 
 The key is the task name, used to queue the task. It doesn't have to match the
 function name.
@@ -189,6 +194,13 @@ Assuming you have a worker running for this queue, the task will be run
 immediately. The second argument must be a single json-serializeable value and
 will be available to the task as ``job.args``.
 
+Multiple Queues
+---------------
+
+You may run multiple queues and workers may each listen to a queue. You can have multiple workers
+listening to the same queue too. A queue is implemented as a CharField in the database.
+The queue would simply filter for jobs matching its queue name.
+
 
 Monitoring
 ----------
@@ -200,7 +212,7 @@ To get a count of current tasks:
 
 .. code:: sql
 
-    SELECT count(*) FROM dpq_job WHERE execute_at <= now()
+    SELECT queue, count(*) FROM dpq_job WHERE execute_at <= now() GROUP BY queue
 
 
 This will include both tasks ready to process and tasks currently being
@@ -211,9 +223,10 @@ installed, this query will count currently-running tasks:
 
 .. code:: sql
 
-    SELECT count(*)
+    SELECT queue, count(*)
     FROM pgrowlocks('dpq_job')
-    WHERE 'For Update' = ANY(modes);
+    WHERE 'For Update' = ANY(modes)
+    GROUP BY queue;
 
 You could join the results of ``pgrowlocks`` with ``dpq_job`` to get the full
 list of tasks in progress if you want.
@@ -221,7 +234,7 @@ list of tasks in progress if you want.
 Logging
 -------
 
-django-postgres-queue logs through Python's logging framework, so can be
+django-pg-queue logs through Python's logging framework, so can be
 configured with the ``LOGGING`` dict in your Django settings. It will not log
 anything under the default config, so be sure to configure some form of
 logging. Everything is logged under the ``dpq`` namespace. Here is an example
@@ -296,7 +309,7 @@ You could also log to a file by using the built-in ``logging.FileHandler``.
 
 Useful Recipes
 ==============
-These recipes aren't officially supported features of `django-postgres-queue`. We provide them so that you can mimick some of the common features in other task queues.
+These recipes aren't officially supported features of `django-pg-queue`. We provide them so that you can mimick some of the common features in other task queues.
 
 `CELERY_ALWAYS_EAGER`
 --------------
