@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     "django_extensions",
     "testproj",
     "pgq",
-    "dpq_scheduler",
 ]
 
 MIDDLEWARE = [
@@ -135,8 +134,5 @@ LOGGING = {
         },
         "simple": {"format": "%(levelname)s %(message)s",},
     },
-    "loggers": {
-        "pgq": {"handlers": ["console"], "level": "DEBUG",},
-        "dpq_scheduler": {"handlers": ["console"], "level": "DEBUG",},
-    },
+    "loggers": {"pgq": {"handlers": ["console"], "level": "DEBUG",},},
 }

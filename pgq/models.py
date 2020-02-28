@@ -62,10 +62,10 @@ class Job(models.Model):
         jobs: Sequence[Job] = list(
             cls.objects.raw(
                 """
-            DELETE FROM dpq_job
+            DELETE FROM pgq_job
             WHERE id = (
                 SELECT id
-                FROM dpq_job
+                FROM pgq_job
                 {WHERE}
                 ORDER BY priority DESC, created_at
                 FOR UPDATE SKIP LOCKED

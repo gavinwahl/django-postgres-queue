@@ -79,10 +79,10 @@ query.
 
 .. code:: sql
 
-    DELETE FROM dpq_job
+    DELETE FROM pgq_job
     WHERE id = (
         SELECT id
-        FROM dpq_job
+        FROM pgq_job
         WHERE execute_at <= now()
         ORDER BY priority DESC, created_at
         FOR UPDATE SKIP LOCKED
@@ -205,14 +205,14 @@ The queue would simply filter for jobs matching its queue name.
 Monitoring
 ----------
 
-Tasks are just database rows stored in the ``dpq_job`` table, so you can
+Tasks are just database rows stored in the ``pgq_job`` table, so you can
 monitor the system with SQL.
 
 To get a count of current tasks:
 
 .. code:: sql
 
-    SELECT queue, count(*) FROM dpq_job WHERE execute_at <= now() GROUP BY queue
+    SELECT queue, count(*) FROM pgq_job WHERE execute_at <= now() GROUP BY queue
 
 
 This will include both tasks ready to process and tasks currently being
@@ -224,11 +224,11 @@ installed, this query will count currently-running tasks:
 .. code:: sql
 
     SELECT queue, count(*)
-    FROM pgrowlocks('dpq_job')
+    FROM pgrowlocks('pgq_job')
     WHERE 'For Update' = ANY(modes)
     GROUP BY queue;
 
-You could join the results of ``pgrowlocks`` with ``dpq_job`` to get the full
+You could join the results of ``pgrowlocks`` with ``pgq_job`` to get the full
 list of tasks in progress if you want.
 
 Logging
