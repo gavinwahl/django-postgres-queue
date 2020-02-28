@@ -52,7 +52,7 @@ class Worker(BaseCommand):
                         "Error in %r: %r.",
                         job,
                         e,
-                        extra={"data": {"job": job.to_json(),},},
+                        extra={"data": {"job": job.to_json()}},
                     )
                     failed_tasks.add(job.id)
                 else:

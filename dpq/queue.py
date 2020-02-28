@@ -33,8 +33,11 @@ class Queue(object, metaclass=abc.ABCMeta):
         )
         return retval
 
-    def enqueue(self, task, args={}, execute_at=None, priority=None):
+    def enqueue(self, task, args=None, execute_at=None, priority=None):
         assert task in self.tasks
+        if args is None:
+            args = {}
+
         kwargs = {"task": task, "args": args, "queue": self.queue}
         if execute_at is not None:
             kwargs["execute_at"] = execute_at
@@ -78,7 +81,7 @@ class Queue(object, metaclass=abc.ABCMeta):
         with connection.cursor() as cur:
             cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
 
-    def _run_once(self, exclude_ids=[]):
+    def _run_once(self, exclude_ids=None):
         job = self.job_model.dequeue(
             exclude_ids=exclude_ids, queue=self.queue, tasks=list(self.tasks)
         )
@@ -97,12 +100,12 @@ class Queue(object, metaclass=abc.ABCMeta):
 
 
 class AtMostOnceQueue(Queue):
-    def run_once(self, exclude_ids=[]):
+    def run_once(self, exclude_ids=None):
         assert not connection.in_atomic_block
         return self._run_once(exclude_ids=exclude_ids)
 
 
 class AtLeastOnceQueue(Queue):
     @transaction.atomic
-    def run_once(self, exclude_ids=[]):
+    def run_once(self, exclude_ids=None):
         return self._run_once(exclude_ids=exclude_ids)

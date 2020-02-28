@@ -41,7 +41,10 @@ def exponential_with_jitter(offset=6):
     return delayfn
 
 
-def retry(max_retries, delayfn=exponential_with_jitter(), Exc=Exception):
+def retry(max_retries, delayfn=None, Exc=Exception):
+    if delayfn is None:
+        delayfn = exponential_with_jitter()
+
     def decorator(fn):
         logger = logging.getLogger(__name__)
 

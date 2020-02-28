@@ -30,7 +30,7 @@ class Job(models.Model):
         return "%s: %s" % (self.id, self.task)
 
     @classmethod
-    def dequeue(cls, exclude_ids=[], tasks=None, queue=DEFAULT_QUEUE_NAME):
+    def dequeue(cls, exclude_ids=None, tasks=None, queue=DEFAULT_QUEUE_NAME):
         """
         Claims the first available task and returns it. If there are no
         tasks available, returns None.
@@ -47,7 +47,7 @@ class Job(models.Model):
         """
 
         WHERE = "WHERE execute_at <= now() AND NOT id = ANY(%s) AND queue = %s"
-        args = [list(exclude_ids), queue]
+        args = [[] if exclude_ids is None else list(exclude_ids), queue]
         if tasks is not None:
             WHERE += " AND TASK = ANY(%s)"
             args.append(tasks)
