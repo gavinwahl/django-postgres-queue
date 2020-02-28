@@ -5,6 +5,7 @@
 - queues separated by queue name
 - fixes bug where a queue attempts to work on a job that isn't its own.
 - black formatting; mypy types; code cleanup
+- rename to pgq to avoid clashing namespace.
 
 
 0.4.3 (2019-06-12)
