@@ -1,15 +1,15 @@
 from django.test import TestCase
 
 from .models import Job, DEFAULT_QUEUE_NAME
-from .queue import AtLeastOnceQueue
+from .queue import AtLeastOnceQueue, Queue
 
 
-def demotask(queue, job):
+def demotask(queue: Queue, job: Job) -> int:
     return job.id
 
 
 class DpqQueueTests(TestCase):
-    def test_create_job_on_queue(self):
+    def test_create_job_on_queue(self) -> None:
         """
         Creates a basic queue with a name, and puts the job onto the queue.
         """
@@ -18,10 +18,12 @@ class DpqQueueTests(TestCase):
 
         queue.enqueue("demotask", {"count": 5})
         job = Job.dequeue(queue=queue.queue)
+        if job is None:
+            self.fail()
         self.assertEqual(job.args["count"], 5)
         self.assertEqual(job.queue, NAME)
 
-    def test_job_contained_to_queue(self):
+    def test_job_contained_to_queue(self) -> None:
         """
         Test that a job added to one queue won't be visible on another queue.
         """
@@ -38,7 +40,7 @@ class DpqQueueTests(TestCase):
         job = Job.dequeue(queue=queue.queue)
         self.assertNotEqual(job, None)
 
-    def test_job_legacy_queues(self):
+    def test_job_legacy_queues(self) -> None:
         """
         Test jobs can be added without a queue name defined.
         """
@@ -46,10 +48,12 @@ class DpqQueueTests(TestCase):
 
         queue.enqueue("demotask", {"count": 5})
         job = Job.dequeue(queue=queue.queue)
+        if job is None:
+            self.fail()
         self.assertEqual(job.args["count"], 5)
         self.assertEqual(job.queue, DEFAULT_QUEUE_NAME)
 
-    def test_same_name_queues_can_fetch_tasks(self):
+    def test_same_name_queues_can_fetch_tasks(self) -> None:
         NAME = "machine_a"
         queue = AtLeastOnceQueue(tasks={"demotask": demotask}, queue=NAME)
 

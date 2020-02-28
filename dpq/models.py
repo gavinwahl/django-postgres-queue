@@ -1,3 +1,5 @@
+from typing import Any, Dict, Optional, Sequence
+
 from django.db import models
 from django.contrib.postgres.functions import TransactionNow
 from django.contrib.postgres.fields import JSONField
@@ -26,11 +28,16 @@ class Job(models.Model):
             models.Index(fields=["queue"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s: %s" % (self.id, self.task)
 
     @classmethod
-    def dequeue(cls, exclude_ids=None, tasks=None, queue=DEFAULT_QUEUE_NAME):
+    def dequeue(
+        cls,
+        exclude_ids: Optional[Sequence[int]] = None,
+        tasks: Optional[Sequence[str]] = None,
+        queue: str = DEFAULT_QUEUE_NAME,
+    ) -> Optional["Job"]:
         """
         Claims the first available task and returns it. If there are no
         tasks available, returns None.
@@ -52,7 +59,7 @@ class Job(models.Model):
             WHERE += " AND TASK = ANY(%s)"
             args.append(tasks)
 
-        jobs = list(
+        jobs: Sequence[Job] = list(
             cls.objects.raw(
                 """
             DELETE FROM dpq_job
@@ -77,7 +84,7 @@ class Job(models.Model):
         else:
             return None
 
-    def to_json(self):
+    def to_json(self) -> Dict[str, Any]:
         return {
             "id": self.id,
             "created_at": self.created_at,

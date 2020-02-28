@@ -1,15 +1,15 @@
 from django.test import TestCase
 
 from .models import Job
-from .queue import AtLeastOnceQueue
+from .queue import AtLeastOnceQueue, Queue
 
 
-def demotask(queue, job):
+def demotask(queue: Queue, job: Job) -> int:
     return job.id
 
 
 class DpqMultipleQueueTests(TestCase):
-    def test_multiple_queues_mutually_exclusive_tasks(self):
+    def test_multiple_queues_mutually_exclusive_tasks(self) -> None:
         """
         Test for a bug where defining multiple queues
         with exclusive tasks raises KeyError when a worker for one queue
@@ -23,7 +23,7 @@ class DpqMultipleQueueTests(TestCase):
 
         queue2.run_once()
 
-    def test_dequeue_without_tasks(self):
+    def test_dequeue_without_tasks(self) -> None:
         """
         Check that a job can dequeue without any tasks given.
         """

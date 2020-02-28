@@ -1,18 +1,22 @@
 import logging
 import signal
 import time
+from typing import Any, Optional, Set
 import os
 
 from django.core.management.base import BaseCommand
 from django.db import connection
 
+from .exceptions import DpqException, DpqNoDefinedQueue
+from .queues import Queue
+
 
 class Worker(BaseCommand):
     # The queue to process. Subclass and set this.
-    queue = None
+    queue: Optional[Queue] = None
     logger = logging.getLogger(__name__)
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: Any) -> None:
         parser.add_argument(
             "--delay",
             type=float,
@@ -25,26 +29,30 @@ class Worker(BaseCommand):
             help="Use LISTEN/NOTIFY to wait for events.",
         )
 
-    def handle_shutdown(self, sig, frame):
+    def handle_shutdown(self, sig: Any, frame: Any) -> None:
         if self._in_task:
             self.logger.info("Waiting for active tasks to finish...")
             self._shutdown = True
         else:
             raise InterruptedError
 
-    def run_available_tasks(self):
+    def run_available_tasks(self) -> None:
         """
         Runs tasks continuously until there are no more available.
         """
         # Prevents tasks that failed from blocking others.
-        failed_tasks = set()
+        failed_tasks: Set[int] = set()
+
+        if self.queue is None:
+            raise DpqNoDefinedQueue
+
         while True:
             job = None
             self._in_task = True
             try:
                 job = self.queue.run_once(exclude_ids=failed_tasks)
-            except Exception as e:
-                if hasattr(e, "job"):
+            except DpqException as e:
+                if e.job is not None:
                     # Make sure we do at least one more iteration of the loop
                     # with the failed task excluded.
                     job = e.job
@@ -63,12 +71,15 @@ class Worker(BaseCommand):
             if not job:
                 break
 
-    def handle(self, **options):
+    def handle(self, **options: Any) -> None:  # type: ignore
         self._shutdown = False
         self._in_task = False
 
-        self.delay = options["delay"]
-        self.listen = options["listen"]
+        self.delay: int = options["delay"]
+        self.listen: bool = options["listen"]
+
+        if self.queue is None:
+            raise DpqNoDefinedQueue
 
         with connection.cursor() as cursor:
             cursor.execute("SET application_name TO %s", ["dpq#{}".format(os.getpid())])
@@ -87,8 +98,8 @@ class Worker(BaseCommand):
             # got shutdown signal
             pass
 
-    def wait(self):
-        if self.listen:
+    def wait(self) -> int:
+        if self.listen and self.queue is not None:
             count = len(self.queue.wait(self.delay))
             self.logger.debug("Woke up with %s NOTIFYs.", count)
             return count

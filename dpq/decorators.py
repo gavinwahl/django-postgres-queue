@@ -1,9 +1,22 @@
 import datetime
 import logging
 import random
+from typing import Any, Callable, Optional, Type, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .queues import Queue
+    from .models import Job
+
+    DelayFnType = Callable[[int], datetime.timedelta]
+    TaskFnType = Callable[[Queue, Job], Any]
+else:
+    Queue = None
+    Job = None
+    DelayFnType = None
+    TaskFnType = None
 
 
-def repeat(delay):
+def repeat(delay: datetime.timedelta) -> Callable[..., Any]:
     """
     Endlessly repeats a task, every `delay` (a timedelta).
 
@@ -18,8 +31,8 @@ def repeat(delay):
     task, though.
     """
 
-    def decorator(fn):
-        def inner(queue, job):
+    def decorator(fn: TaskFnType) -> TaskFnType:
+        def inner(queue: Queue, job: Job) -> Any:
             queue.enqueue(
                 job.task,
                 job.args,
@@ -33,29 +46,34 @@ def repeat(delay):
     return decorator
 
 
-def exponential_with_jitter(offset=6):
-    def delayfn(retries):
+def exponential_with_jitter(offset: int = 6) -> DelayFnType:
+    def delayfn(retries: int) -> datetime.timedelta:
         jitter = random.randrange(-15, 15)
         return datetime.timedelta(seconds=2 ** (retries + offset) + jitter)
 
     return delayfn
 
 
-def retry(max_retries, delayfn=None, Exc=Exception):
+def retry(
+    max_retries: int,
+    delayfn: Optional[DelayFnType] = None,
+    Exc: Type[Exception] = Exception,
+) -> Callable[[TaskFnType], TaskFnType]:
+
     if delayfn is None:
         delayfn = exponential_with_jitter()
 
-    def decorator(fn):
+    def decorator(fn: TaskFnType) -> TaskFnType:
         logger = logging.getLogger(__name__)
 
-        def inner(queue, job):
+        def inner(queue: Queue, job: Job) -> Any:
             try:
                 return fn(queue, job)
             except Exc as e:
                 retries = job.args.get("retries", 0)
                 if retries < max_retries:
                     job.args["retries"] = retries + 1
-                    delay = delayfn(retries)
+                    delay = delayfn(retries)  # type: ignore
                     job.execute_at += delay
                     job.save(force_insert=True)
                     logger.warning(

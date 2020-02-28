@@ -1,26 +1,35 @@
-import time
+import abc
+import datetime
 import logging
 import select
-import abc
+import time
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple
 
-from .models import Job, DEFAULT_QUEUE_NAME
 from django.db import connection, transaction
 
+from .exceptions import DpqException
+from .models import Job, DEFAULT_QUEUE_NAME
 
-class Queue(object, metaclass=abc.ABCMeta):
+
+class Queue(metaclass=abc.ABCMeta):
     job_model = Job
     logger = logging.getLogger(__name__)
 
-    def __init__(self, tasks, notify_channel=None, queue=DEFAULT_QUEUE_NAME):
+    def __init__(
+        self,
+        tasks: Dict[str, Callable[["Queue", Job], Any]],
+        notify_channel: Optional[str] = None,
+        queue: str = DEFAULT_QUEUE_NAME,
+    ) -> None:
         self.tasks = tasks
         self.notify_channel = notify_channel
         self.queue = queue
 
     @abc.abstractmethod
-    def run_once(self):
+    def run_once(self) -> Optional[Tuple[Job, Any]]:
         raise NotImplementedError
 
-    def run_job(self, job):
+    def run_job(self, job: Job) -> Any:
         task = self.tasks[job.task]
         start_time = time.time()
         retval = task(self, job)
@@ -33,12 +42,18 @@ class Queue(object, metaclass=abc.ABCMeta):
         )
         return retval
 
-    def enqueue(self, task, args=None, execute_at=None, priority=None):
+    def enqueue(
+        self,
+        task: str,
+        args: Optional[Dict[str, Any]] = None,
+        execute_at: Optional[datetime.datetime] = None,
+        priority: Optional[int] = None,
+    ) -> Job:
         assert task in self.tasks
         if args is None:
             args = {}
 
-        kwargs = {"task": task, "args": args, "queue": self.queue}
+        kwargs: Dict[str, Any] = {"task": task, "args": args, "queue": self.queue}
         if execute_at is not None:
             kwargs["execute_at"] = execute_at
         if priority is not None:
@@ -49,12 +64,12 @@ class Queue(object, metaclass=abc.ABCMeta):
             self.notify(job)
         return job
 
-    def listen(self):
+    def listen(self) -> None:
         assert self.notify_channel, "You must set a notify channel in order to listen."
         with connection.cursor() as cur:
             cur.execute('LISTEN "{}";'.format(self.notify_channel))
 
-    def wait(self, timeout=30):
+    def wait(self, timeout: int = 30) -> Sequence[str]:
         connection.connection.poll()
         notifies = self.filter_notifies()
         if notifies:
@@ -64,7 +79,7 @@ class Queue(object, metaclass=abc.ABCMeta):
         connection.connection.poll()
         return self.filter_notifies()
 
-    def filter_notifies(self):
+    def filter_notifies(self) -> Sequence[str]:
         notifies = [
             i
             for i in connection.connection.notifies
@@ -77,11 +92,13 @@ class Queue(object, metaclass=abc.ABCMeta):
         ]
         return notifies
 
-    def notify(self, job):
+    def notify(self, job: Job) -> None:
         with connection.cursor() as cur:
             cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
 
-    def _run_once(self, exclude_ids=None):
+    def _run_once(
+        self, exclude_ids: Optional[Sequence[int]] = None
+    ) -> Optional[Tuple[Job, Any]]:
         job = self.job_model.dequeue(
             exclude_ids=exclude_ids, queue=self.queue, tasks=list(self.tasks)
         )
@@ -93,19 +110,22 @@ class Queue(object, metaclass=abc.ABCMeta):
                 return job, self.run_job(job)
             except Exception as e:
                 # Add job info to exception to be accessible for logging.
-                e.job = job
-                raise
+                raise DpqException(job=job) from e
         else:
             return None
 
 
 class AtMostOnceQueue(Queue):
-    def run_once(self, exclude_ids=None):
+    def run_once(
+        self, exclude_ids: Optional[Sequence[int]] = None
+    ) -> Optional[Tuple[Job, Any]]:
         assert not connection.in_atomic_block
         return self._run_once(exclude_ids=exclude_ids)
 
 
 class AtLeastOnceQueue(Queue):
     @transaction.atomic
-    def run_once(self, exclude_ids=None):
+    def run_once(
+        self, exclude_ids: Optional[Sequence[int]] = None
+    ) -> Optional[Tuple[Job, Any]]:
         return self._run_once(exclude_ids=exclude_ids)
