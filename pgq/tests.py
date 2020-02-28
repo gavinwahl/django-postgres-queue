@@ -8,7 +8,7 @@ def demotask(queue: Queue, job: Job) -> int:
     return job.id
 
 
-class DpqQueueTests(TestCase):
+class PgqQueueTests(TestCase):
     def test_create_job_on_queue(self) -> None:
         """
         Creates a basic queue with a name, and puts the job onto the queue.

@@ -8,7 +8,7 @@ def demotask(queue: Queue, job: Job) -> int:
     return job.id
 
 
-class DpqMultipleQueueTests(TestCase):
+class PgqMultipleQueueTests(TestCase):
     def test_multiple_queues_mutually_exclusive_tasks(self) -> None:
         """
         Test for a bug where defining multiple queues

@@ -1,4 +1,4 @@
-from dpq.commands import Worker
+from pgq.commands import Worker
 
 from testproj.queue import queue
 

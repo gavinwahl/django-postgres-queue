@@ -126,7 +126,7 @@ Install with pip::
 
   pip install django-pg-queue
 
-Then add ``'dpq'`` to your ``INSTALLED_APPS``. Run ``manage.py migrate`` to
+Then add ``'pgq'`` to your ``INSTALLED_APPS``. Run ``manage.py migrate`` to
 create the jobs table.
 
 Instantiate a queue object. This can go wherever you like and be named whatever
@@ -134,7 +134,7 @@ you like. For example, ``someapp/queue.py``:
 
 .. code:: python
 
-    from dpq.queue import AtLeastOnceQueue
+    from pgq.queue import AtLeastOnceQueue
 
     queue = AtLeastOnceQueue(
         tasks={
@@ -155,7 +155,7 @@ use to consume your tasks. It can be called whatever you like, for example in a
 
 .. code:: python
 
-    from dpq.commands import Worker
+    from pgq.commands import Worker
 
     from someapp.queue import queue
 
@@ -237,7 +237,7 @@ Logging
 django-pg-queue logs through Python's logging framework, so can be
 configured with the ``LOGGING`` dict in your Django settings. It will not log
 anything under the default config, so be sure to configure some form of
-logging. Everything is logged under the ``dpq`` namespace. Here is an example
+logging. Everything is logged under the ``pgq`` namespace. Here is an example
 configuration that will log INFO level messages to stdout:
 
 .. code:: python
@@ -261,7 +261,7 @@ configuration that will log INFO level messages to stdout:
             },
         },
         'loggers': {
-            'dpq': {
+            'pgq': {
                 'handlers': ['console'],
                 'level': 'INFO',
                 'propagate': False,
@@ -297,7 +297,7 @@ Sentry:
             },
         },
         'loggers': {
-            'dpq': {
+            'pgq': {
                 'level': 'INFO',
                 'handlers': ['console', 'sentry'],
                 'propagate': False,
@@ -312,7 +312,7 @@ Useful Recipes
 These recipes aren't officially supported features of `django-pg-queue`. We provide them so that you can mimick some of the common features in other task queues.
 
 `CELERY_ALWAYS_EAGER`
---------------
+---------------------
 Celery uses the `CELERY_ALWAYS_EAGER` setting to run a task immediately, without queueing it for a worker. It could be used during tests, and while debugging in a development environment with any workers turned off.
 
 .. code:: python

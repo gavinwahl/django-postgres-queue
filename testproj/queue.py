@@ -1,9 +1,9 @@
 import time
 from datetime import timedelta
 
-from dpq.queue import AtLeastOnceQueue, Queue
-from dpq.decorators import repeat
-from dpq.models import Job
+from pgq.queue import AtLeastOnceQueue, Queue
+from pgq.decorators import repeat
+from pgq.models import Job
 
 
 def foo(queue: Queue, job: Job):

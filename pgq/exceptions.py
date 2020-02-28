@@ -6,8 +6,8 @@ else:
     Job = None
 
 
-class DpqException(Exception):
-    """Base exception for dpq"""
+class PgqException(Exception):
+    """Base exception for pgq"""
 
     job: Optional[Job] = None
 
@@ -15,9 +15,9 @@ class DpqException(Exception):
         self.job = job
 
 
-class DpqIncorrectQueue(DpqException):
+class PgqIncorrectQueue(PgqException):
     """Job placed on incorrect queue."""
 
 
-class DpqNoDefinedQueue(DpqException):
+class PgqNoDefinedQueue(PgqException):
     """There is no queue to work."""

@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Tuple
 
 from django.db import connection, transaction
 
-from .exceptions import DpqException
+from .exceptions import PgqException
 from .models import Job, DEFAULT_QUEUE_NAME
 
 
@@ -110,7 +110,7 @@ class Queue(metaclass=abc.ABCMeta):
                 return job, self.run_job(job)
             except Exception as e:
                 # Add job info to exception to be accessible for logging.
-                raise DpqException(job=job) from e
+                raise PgqException(job=job) from e
         else:
             return None
 

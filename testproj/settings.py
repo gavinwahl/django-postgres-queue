@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_extensions",
     "testproj",
-    "dpq",
+    "pgq",
     "dpq_scheduler",
 ]
 
@@ -136,7 +136,7 @@ LOGGING = {
         "simple": {"format": "%(levelname)s %(message)s",},
     },
     "loggers": {
-        "dpq": {"handlers": ["console"], "level": "DEBUG",},
+        "pgq": {"handlers": ["console"], "level": "DEBUG",},
         "dpq_scheduler": {"handlers": ["console"], "level": "DEBUG",},
     },
 }

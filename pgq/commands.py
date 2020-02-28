@@ -7,7 +7,7 @@ import os
 from django.core.management.base import BaseCommand
 from django.db import connection
 
-from .exceptions import DpqException, DpqNoDefinedQueue
+from .exceptions import PgqException, PgqNoDefinedQueue
 from .queues import Queue
 
 
@@ -44,14 +44,14 @@ class Worker(BaseCommand):
         failed_tasks: Set[int] = set()
 
         if self.queue is None:
-            raise DpqNoDefinedQueue
+            raise PgqNoDefinedQueue
 
         while True:
             job = None
             self._in_task = True
             try:
                 job = self.queue.run_once(exclude_ids=failed_tasks)
-            except DpqException as e:
+            except PgqException as e:
                 if e.job is not None:
                     # Make sure we do at least one more iteration of the loop
                     # with the failed task excluded.
@@ -79,10 +79,10 @@ class Worker(BaseCommand):
         self.listen: bool = options["listen"]
 
         if self.queue is None:
-            raise DpqNoDefinedQueue
+            raise PgqNoDefinedQueue
 
         with connection.cursor() as cursor:
-            cursor.execute("SET application_name TO %s", ["dpq#{}".format(os.getpid())])
+            cursor.execute("SET application_name TO %s", ["pgq#{}".format(os.getpid())])
 
         if self.listen:
             self.queue.listen()
