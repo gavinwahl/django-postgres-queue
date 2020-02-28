@@ -25,14 +25,11 @@ class Queue(object, metaclass=abc.ABCMeta):
         start_time = time.time()
         retval = task(self, job)
         self.logger.info(
-            'Processing %r took %0.4f seconds. Task returned %r.',
-            job, time.time() - start_time, retval,
-            extra={
-                'data': {
-                    'job': job.to_json(),
-                    'retval': retval,
-                }
-            }
+            "Processing %r took %0.4f seconds. Task returned %r.",
+            job,
+            time.time() - start_time,
+            retval,
+            extra={"data": {"job": job.to_json(), "retval": retval,}},
         )
         return retval
 
@@ -40,9 +37,9 @@ class Queue(object, metaclass=abc.ABCMeta):
         assert task in self.tasks
         kwargs = {"task": task, "args": args, "queue": self.queue}
         if execute_at is not None:
-            kwargs['execute_at'] = execute_at
+            kwargs["execute_at"] = execute_at
         if priority is not None:
-            kwargs['priority'] = priority
+            kwargs["priority"] = priority
 
         job = self.job_model.objects.create(**kwargs)
         if self.notify_channel:
@@ -66,11 +63,13 @@ class Queue(object, metaclass=abc.ABCMeta):
 
     def filter_notifies(self):
         notifies = [
-            i for i in connection.connection.notifies
+            i
+            for i in connection.connection.notifies
             if i.channel == self.notify_channel
         ]
         connection.connection.notifies = [
-            i for i in connection.connection.notifies
+            i
+            for i in connection.connection.notifies
             if i.channel != self.notify_channel
         ]
         return notifies
@@ -80,13 +79,13 @@ class Queue(object, metaclass=abc.ABCMeta):
             cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
 
     def _run_once(self, exclude_ids=[]):
-        job = self.job_model.dequeue(exclude_ids=exclude_ids, queue=self.queue, tasks=list(self.tasks))
+        job = self.job_model.dequeue(
+            exclude_ids=exclude_ids, queue=self.queue, tasks=list(self.tasks)
+        )
         if job:
-            self.logger.debug('Claimed %r.', job, extra={
-                'data': {
-                    'job': job.to_json(),
-                }
-            })
+            self.logger.debug(
+                "Claimed %r.", job, extra={"data": {"job": job.to_json(),}}
+            )
             try:
                 return job, self.run_job(job)
             except Exception as e:

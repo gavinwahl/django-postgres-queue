@@ -14,20 +14,20 @@ class Worker(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--delay',
+            "--delay",
             type=float,
             default=1,
             help="The number of seconds to wait to check for new tasks.",
         )
         parser.add_argument(
-            '--listen',
-            action='store_true',
-            help="Use LISTEN/NOTIFY to wait for events."
+            "--listen",
+            action="store_true",
+            help="Use LISTEN/NOTIFY to wait for events.",
         )
 
     def handle_shutdown(self, sig, frame):
         if self._in_task:
-            self.logger.info('Waiting for active tasks to finish...')
+            self.logger.info("Waiting for active tasks to finish...")
             self._shutdown = True
         else:
             raise InterruptedError
@@ -44,15 +44,16 @@ class Worker(BaseCommand):
             try:
                 job = self.queue.run_once(exclude_ids=failed_tasks)
             except Exception as e:
-                if hasattr(e, 'job'):
+                if hasattr(e, "job"):
                     # Make sure we do at least one more iteration of the loop
                     # with the failed task excluded.
                     job = e.job
-                    self.logger.exception('Error in %r: %r.', job, e, extra={
-                        'data': {
-                            'job': job.to_json(),
-                        },
-                    })
+                    self.logger.exception(
+                        "Error in %r: %r.",
+                        job,
+                        e,
+                        extra={"data": {"job": job.to_json(),},},
+                    )
                     failed_tasks.add(job.id)
                 else:
                     raise
@@ -66,11 +67,11 @@ class Worker(BaseCommand):
         self._shutdown = False
         self._in_task = False
 
-        self.delay = options['delay']
-        self.listen = options['listen']
+        self.delay = options["delay"]
+        self.listen = options["listen"]
 
         with connection.cursor() as cursor:
-            cursor.execute("SET application_name TO %s", ['dpq#{}'.format(os.getpid())])
+            cursor.execute("SET application_name TO %s", ["dpq#{}".format(os.getpid())])
 
         if self.listen:
             self.queue.listen()
@@ -89,7 +90,7 @@ class Worker(BaseCommand):
     def wait(self):
         if self.listen:
             count = len(self.queue.wait(self.delay))
-            self.logger.debug('Woke up with %s NOTIFYs.', count)
+            self.logger.debug("Woke up with %s NOTIFYs.", count)
             return count
         else:
             time.sleep(self.delay)

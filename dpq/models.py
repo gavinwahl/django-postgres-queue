@@ -10,8 +10,7 @@ class Job(models.Model):
     created_at = models.DateTimeField(default=TransactionNow)
     execute_at = models.DateTimeField(default=TransactionNow)
     priority = models.IntegerField(
-        default=0,
-        help_text="Jobs with higher priority will be processed first."
+        default=0, help_text="Jobs with higher priority will be processed first."
     )
     task = models.CharField(max_length=255)
     args = JSONField()
@@ -28,7 +27,7 @@ class Job(models.Model):
         ]
 
     def __str__(self):
-        return '%s: %s' % (self.id, self.task)
+        return "%s: %s" % (self.id, self.task)
 
     @classmethod
     def dequeue(cls, exclude_ids=[], tasks=None, queue=DEFAULT_QUEUE_NAME):
@@ -53,8 +52,9 @@ class Job(models.Model):
             WHERE += " AND TASK = ANY(%s)"
             args.append(tasks)
 
-        jobs = list(cls.objects.raw(
-            """
+        jobs = list(
+            cls.objects.raw(
+                """
             DELETE FROM dpq_job
             WHERE id = (
                 SELECT id
@@ -65,9 +65,12 @@ class Job(models.Model):
                 LIMIT 1
             )
             RETURNING *;
-            """.format(WHERE=WHERE),
-            args
-        ))
+            """.format(
+                    WHERE=WHERE
+                ),
+                args,
+            )
+        )
         assert len(jobs) <= 1
         if jobs:
             return jobs[0]
