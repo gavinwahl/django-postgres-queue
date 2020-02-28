@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="django-pg-queue",
-    version="0.5.0",
+    version="0.5.1",
     packages=["pgq", "pgq.migrations", "dpq_scheduler", "dpq_scheduler.migrations",],
     package_data={"pgq": ["py.typed"]},
     license="BSD",
