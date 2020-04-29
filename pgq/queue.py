@@ -3,7 +3,7 @@ import datetime
 import logging
 import select
 import time
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from django.db import connection, transaction
 
@@ -61,8 +61,26 @@ class Queue(metaclass=abc.ABCMeta):
 
         job = self.job_model.objects.create(**kwargs)
         if self.notify_channel:
-            self.notify(job)
+            self.notify()
         return job
+
+    def bulk_enqueue(
+        self,
+        task: str,
+        kwargs_list: Sequence[Dict[str, Any]] = None,
+        batch_size: Optional[int] = None,
+    ) -> List[Job]:
+
+        assert task in self.tasks
+
+        jobs = Job.objects.bulk_create(
+            [Job(task=task, queue=self.queue, **kwargs) for kwargs in kwargs_list],
+            batch_size=batch_size,
+        )
+
+        if self.notify_channel:
+            self.notify()
+        return jobs
 
     def listen(self) -> None:
         assert self.notify_channel, "You must set a notify channel in order to listen."
@@ -92,9 +110,9 @@ class Queue(metaclass=abc.ABCMeta):
         ]
         return notifies
 
-    def notify(self, job: Job) -> None:
+    def notify(self) -> None:
         with connection.cursor() as cur:
-            cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
+            cur.execute('NOTIFY "%s";' % self.notify_channel)
 
     def _run_once(
         self, exclude_ids: Optional[Sequence[int]] = None
