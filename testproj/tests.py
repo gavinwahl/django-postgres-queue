@@ -1,7 +1,7 @@
 from django.test import TestCase
 
-from .models import Job, DEFAULT_QUEUE_NAME
-from .queue import AtLeastOnceQueue, Queue
+from pgq.models import Job, DEFAULT_QUEUE_NAME
+from pgq.queue import AtLeastOnceQueue, Queue
 
 
 def demotask(queue: Queue, job: Job) -> int:
