@@ -1,3 +1,4 @@
+from django.db.transaction import atomic
 from django.test import TestCase, TransactionTestCase
 
 from pgq.models import Job, DEFAULT_QUEUE_NAME
@@ -84,3 +85,29 @@ class PgqNotifyTests(TransactionTestCase):
         queue.enqueue("demotask", {"count": 5})
         queue.enqueue("demotask", {"count": 5})
         self.assertEqual(len(queue.filter_notifies()), 2)
+
+    def test_notify_only_returns_one_notify_per_channel_per_txn(self):
+        """
+        Only one notification returned per channel per txn regardless of number
+        enqueued tasks.
+
+        By default, postgres will 'fold' notifications within a transaction
+        that have the same channel and payload.
+        """
+        NAME = "machine_a"
+        queue = AtLeastOnceQueue(tasks={"demotask": demotask}, notify_channel="queue_a", queue=NAME)
+        queue.listen()
+
+        NAME2 = "machine_b"
+        queue2 = AtLeastOnceQueue(tasks={"demotask": demotask}, notify_channel="queue_b", queue=NAME2)
+        queue2.listen()
+
+        with atomic():
+            queue.enqueue("demotask", {"count": 5})
+            queue.enqueue("demotask", {"count": 5})
+
+            queue2.enqueue("demotask", {"count": 5})
+            queue2.enqueue("demotask", {"count": 5})
+
+        self.assertEqual(len(queue.wait()), 1)
+        self.assertEqual(len(queue2.wait()), 1)

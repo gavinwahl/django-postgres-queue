@@ -61,7 +61,7 @@ class Queue(metaclass=abc.ABCMeta):
 
         job = self.job_model.objects.create(**kwargs)
         if self.notify_channel:
-            self.notify(job)
+            self.notify()
         return job
 
     def listen(self) -> None:
@@ -92,9 +92,9 @@ class Queue(metaclass=abc.ABCMeta):
         ]
         return notifies
 
-    def notify(self, job: Job) -> None:
+    def notify(self) -> None:
         with connection.cursor() as cur:
-            cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
+            cur.execute('NOTIFY "%s";' % self.notify_channel)
 
     def _run_once(
         self, exclude_ids: Optional[Sequence[int]] = None
