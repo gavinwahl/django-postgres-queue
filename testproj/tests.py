@@ -84,11 +84,7 @@ class PgqQueueTests(TestCase):
             task_name,
             [
                 {"args": {"count": 5}},
-                {
-                    "args": {"count": 7},
-                    "priority": 10,
-                    "execute_at": day_from_now,
-                },
+                {"args": {"count": 7}, "priority": 10, "execute_at": day_from_now,},
             ],
         )
         jobs = Job.objects.all()
@@ -111,7 +107,9 @@ class PgqNotifyTests(TransactionTestCase):
         After `listen()`, `enqueue()` makes a notification appear via `filter_notifies()`.
         """
         NAME = "machine_a"
-        queue = AtLeastOnceQueue(tasks={"demotask": demotask}, notify_channel="queue_a", queue=NAME)
+        queue = AtLeastOnceQueue(
+            tasks={"demotask": demotask}, notify_channel="queue_a", queue=NAME
+        )
 
         queue.listen()
         queue.enqueue("demotask", {"count": 5})
@@ -130,11 +128,15 @@ class PgqNotifyTests(TransactionTestCase):
         that have the same channel and payload.
         """
         NAME = "machine_a"
-        queue = AtLeastOnceQueue(tasks={"demotask": demotask}, notify_channel="queue_a", queue=NAME)
+        queue = AtLeastOnceQueue(
+            tasks={"demotask": demotask}, notify_channel="queue_a", queue=NAME
+        )
         queue.listen()
 
         NAME2 = "machine_b"
-        queue2 = AtLeastOnceQueue(tasks={"demotask": demotask}, notify_channel="queue_b", queue=NAME2)
+        queue2 = AtLeastOnceQueue(
+            tasks={"demotask": demotask}, notify_channel="queue_b", queue=NAME2
+        )
         queue2.listen()
 
         with atomic():
@@ -149,7 +151,9 @@ class PgqNotifyTests(TransactionTestCase):
 
     def test_bulk_create_notifies(self) -> None:
         NAME = "machine_a"
-        queue = AtLeastOnceQueue(tasks={"demotask": demotask}, notify_channel="queue_a", queue=NAME)
+        queue = AtLeastOnceQueue(
+            tasks={"demotask": demotask}, notify_channel="queue_a", queue=NAME
+        )
         queue.listen()
 
         now = timezone.now()
@@ -157,11 +161,7 @@ class PgqNotifyTests(TransactionTestCase):
             "demotask",
             [
                 {"args": {"count": 5}},
-                {
-                    "args": {"count": 7},
-                    "priority": 10,
-                    "execute_at": now,
-                },
+                {"args": {"count": 7}, "priority": 10, "execute_at": now,},
             ],
         )
 
