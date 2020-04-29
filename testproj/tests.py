@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 
 from pgq.models import Job, DEFAULT_QUEUE_NAME
 from pgq.queue import AtLeastOnceQueue, Queue
@@ -67,3 +67,20 @@ class PgqQueueTests(TestCase):
         # now the job should be gone...
         job = Job.dequeue(queue=queue.queue)
         self.assertEqual(job, None)
+
+
+class PgqNotifyTests(TransactionTestCase):
+    def test_notify_and_listen(self):
+        """
+        After `listen()`, `enqueue()` makes a notification appear via `filter_notifies()`.
+        """
+        NAME = "machine_a"
+        queue = AtLeastOnceQueue(tasks={"demotask": demotask}, notify_channel="queue_a", queue=NAME)
+
+        queue.listen()
+        queue.enqueue("demotask", {"count": 5})
+        self.assertEqual(len(queue.filter_notifies()), 1)
+
+        queue.enqueue("demotask", {"count": 5})
+        queue.enqueue("demotask", {"count": 5})
+        self.assertEqual(len(queue.filter_notifies()), 2)
