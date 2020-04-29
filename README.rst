@@ -201,6 +201,28 @@ You may run multiple queues and workers may each listen to a queue. You can have
 listening to the same queue too. A queue is implemented as a CharField in the database.
 The queue would simply filter for jobs matching its queue name.
 
+Bulk Enqueue
+------------
+
+Many jobs can be efficiently created using ``bulk_enqueue()`` which accepts one
+task name for all the jobs being created and a list of dictionaries containing
+``args`` for the task to execute with and, optionally, ``priority`` and
+``execute_at`` for that particular job.
+
+.. code:: python
+
+    queue.bulk_enqueue(
+        'debug_task',
+        [
+            {'args': {'some_args': 0}},
+            {
+                'args': {'some_args': 10}
+                'priority': 10,
+                'execute_at': timezone.now() + timedelta(days=1),
+            },
+        ]
+    )
+
 
 Monitoring
 ----------
