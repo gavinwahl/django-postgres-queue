@@ -79,10 +79,10 @@ WSGI_APPLICATION = "testproj.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "dpq_testproj",
-        "USER": "dpq",
-        "PASSWORD": "dpq",
-        "TEST": {"NAME": "dpq_testproj"},
+        "NAME": "pgq_testproj",
+        "USER": "pgq",
+        "PASSWORD": "pgq",
+        "TEST": {"NAME": "pgq_testproj"},
     }
 }
 
