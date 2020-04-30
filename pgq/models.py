@@ -1,4 +1,4 @@
-from typing import AbstractSet, Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, Iterable, Optional, Sequence
 
 from django.db import models
 from django.contrib.postgres.functions import TransactionNow
@@ -35,7 +35,7 @@ class BaseJob(models.Model):
     @classmethod
     def dequeue(
         cls,
-        exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None,
+        exclude_ids: Optional[Iterable[int]] = None,
         tasks: Optional[Sequence[str]] = None,
         queue: str = DEFAULT_QUEUE_NAME,
     ) -> Optional["BaseJob"]:
@@ -43,8 +43,8 @@ class BaseJob(models.Model):
         Claims the first available task and returns it. If there are no
         tasks available, returns None.
 
-        exclude_ids: List[int] - excludes jobs with these ids
-        tasks: Optional[List[str]] - filters by jobs with these tasks.
+        exclude_ids: Iterable[int] - excludes jobs with these ids
+        tasks: Optional[Sequence[str]] - filters by jobs with these tasks.
 
         For at-most-once delivery, commit the transaction before
         processing the task. For at-least-once delivery, dequeue and
