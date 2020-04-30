@@ -3,7 +3,17 @@ import datetime
 import logging
 import select
 import time
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import (
+    AbstractSet,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from django.db import connection, transaction
 
@@ -26,10 +36,23 @@ class Queue(metaclass=abc.ABCMeta):
         self.queue = queue
 
     @abc.abstractmethod
-    def run_once(self) -> Optional[Tuple[Job, Any]]:
+    def run_once(
+        self, exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None
+    ) -> Optional[Tuple[Job, Any]]:
+        """Get a job from the queue and run it.
+
+        Returns:
+            - if a job was run: the Job obj run (now removed from the db) and
+              it's returned values.
+            - If there was no job, return None.
+
+        If a job fails, ``PgqException`` is raised with the job object that
+        failed stored in it.
+        """
         raise NotImplementedError
 
     def run_job(self, job: Job) -> Any:
+        """Execute job, return the output of job."""
         task = self.tasks[job.task]
         start_time = time.time()
         retval = task(self, job)
@@ -67,7 +90,7 @@ class Queue(metaclass=abc.ABCMeta):
     def bulk_enqueue(
         self,
         task: str,
-        kwargs_list: Sequence[Dict[str, Any]] = None,
+        kwargs_list: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
     ) -> List[Job]:
 
@@ -115,8 +138,20 @@ class Queue(metaclass=abc.ABCMeta):
             cur.execute('NOTIFY "%s";' % self.notify_channel)
 
     def _run_once(
-        self, exclude_ids: Optional[Sequence[int]] = None
+        self, exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None
     ) -> Optional[Tuple[Job, Any]]:
+        """Get a job from the queue and run it.
+
+        Implements the same function signature as ``run_once()``
+
+        Returns:
+            - if a job was run: the Job obj run (now removed from the db) and
+              it's returned values.
+            - If there was no job, return None.
+
+        If a job fails, ``PgqException`` is raised with the job object that
+        failed stored in it.
+        """
         job = self.job_model.dequeue(
             exclude_ids=exclude_ids, queue=self.queue, tasks=list(self.tasks)
         )
@@ -135,7 +170,7 @@ class Queue(metaclass=abc.ABCMeta):
 
 class AtMostOnceQueue(Queue):
     def run_once(
-        self, exclude_ids: Optional[Sequence[int]] = None
+        self, exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None
     ) -> Optional[Tuple[Job, Any]]:
         assert not connection.in_atomic_block
         return self._run_once(exclude_ids=exclude_ids)
@@ -144,6 +179,6 @@ class AtMostOnceQueue(Queue):
 class AtLeastOnceQueue(Queue):
     @transaction.atomic
     def run_once(
-        self, exclude_ids: Optional[Sequence[int]] = None
+        self, exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None
     ) -> Optional[Tuple[Job, Any]]:
         return self._run_once(exclude_ids=exclude_ids)

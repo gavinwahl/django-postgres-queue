@@ -47,29 +47,29 @@ class Worker(BaseCommand):
             raise PgqNoDefinedQueue
 
         while True:
-            job = None
             self._in_task = True
             try:
                 job = self.queue.run_once(exclude_ids=failed_tasks)
+                if job is None:
+                    # No more jobs
+                    return
             except PgqException as e:
                 if e.job is not None:
                     # Make sure we do at least one more iteration of the loop
                     # with the failed task excluded.
-                    job = e.job
+                    failed_job = e.job
                     self.logger.exception(
                         "Error in %r: %r.",
-                        job,
+                        failed_job,
                         e,
-                        extra={"data": {"job": job.to_json()}},
+                        extra={"data": {"job": failed_job.to_json()}},
                     )
-                    failed_tasks.add(job.id)
+                    failed_tasks.add(failed_job.id)
                 else:
                     raise
             self._in_task = False
             if self._shutdown:
                 raise InterruptedError
-            if not job:
-                break
 
     def handle(self, **options: Any) -> None:  # type: ignore
         self._shutdown = False

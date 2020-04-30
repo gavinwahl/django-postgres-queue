@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence
+from typing import AbstractSet, Any, Dict, Optional, Sequence, Union
 
 from django.db import models
 from django.contrib.postgres.functions import TransactionNow
@@ -34,7 +34,7 @@ class Job(models.Model):
     @classmethod
     def dequeue(
         cls,
-        exclude_ids: Optional[Sequence[int]] = None,
+        exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None,
         tasks: Optional[Sequence[str]] = None,
         queue: str = DEFAULT_QUEUE_NAME,
     ) -> Optional["Job"]:
