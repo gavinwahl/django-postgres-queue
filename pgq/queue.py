@@ -4,15 +4,14 @@ import logging
 import select
 import time
 from typing import (
-    AbstractSet,
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Optional,
     Sequence,
     Tuple,
-    Union,
 )
 
 from django.db import connection, transaction
@@ -37,7 +36,7 @@ class Queue(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def run_once(
-        self, exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None
+        self, exclude_ids: Optional[Iterable[int]] = None
     ) -> Optional[Tuple[Job, Any]]:
         """Get a job from the queue and run it.
 
@@ -138,7 +137,7 @@ class Queue(metaclass=abc.ABCMeta):
             cur.execute('NOTIFY "%s";' % self.notify_channel)
 
     def _run_once(
-        self, exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None
+        self, exclude_ids: Optional[Iterable[int]] = None
     ) -> Optional[Tuple[Job, Any]]:
         """Get a job from the queue and run it.
 
@@ -170,7 +169,7 @@ class Queue(metaclass=abc.ABCMeta):
 
 class AtMostOnceQueue(Queue):
     def run_once(
-        self, exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None
+        self, exclude_ids: Optional[Iterable[int]] = None
     ) -> Optional[Tuple[Job, Any]]:
         assert not connection.in_atomic_block
         return self._run_once(exclude_ids=exclude_ids)
@@ -179,6 +178,6 @@ class AtMostOnceQueue(Queue):
 class AtLeastOnceQueue(Queue):
     @transaction.atomic
     def run_once(
-        self, exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None
+        self, exclude_ids: Optional[Iterable[int]] = None
     ) -> Optional[Tuple[Job, Any]]:
         return self._run_once(exclude_ids=exclude_ids)
