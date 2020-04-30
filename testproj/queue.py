@@ -1,20 +1,20 @@
 import time
 from datetime import timedelta
 
-from pgq.queue import AtLeastOnceQueue, Queue
 from pgq.decorators import repeat
-from pgq.models import Job
+from pgq.models import BaseJob
+from pgq.queue import AtLeastOnceQueue, Queue
 
 
-def foo(queue: Queue, job: Job):
+def foo(queue: Queue, job: BaseJob):
     print("foo {}".format(job.args))
 
 
-def timer(queue: Queue, job: Job):
+def timer(queue: Queue, job: BaseJob):
     print(time.time() - job.args["time"])
 
 
-def n_times(queue: Queue, job: Job):
+def n_times(queue: Queue, job: BaseJob):
     print("n_times", job.args["count"])
     if job.args["count"] > 1:
         queue.enqueue(job.task, {"count": job.args["count"] - 1})
