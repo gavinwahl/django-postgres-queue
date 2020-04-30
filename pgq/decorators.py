@@ -6,8 +6,6 @@ import logging
 import random
 from typing import Any, Callable, Dict, Optional, Type, TYPE_CHECKING
 
-from django.conf import settings
-
 if TYPE_CHECKING:
     from .queue import Queue
     from .models import BaseJob
@@ -184,20 +182,7 @@ class AsyncTask:
         self, args: Dict[str, Any], meta: Optional[Dict[str, Any]] = None
     ) -> BaseJob:
         wrapped_args = {"func_args": args, "meta": meta if meta is not None else {}}
-
-        old = self.queue.notify_channel
-        if getattr(settings, "CELERY_ALWAYS_EAGER", False):
-            self.queue.notify_channel = None
-
-        try:
-            job = self.queue.enqueue(self.name, wrapped_args)
-        finally:
-            self.queue.notify_channel = old
-
-        if getattr(settings, "CELERY_ALWAYS_EAGER", False):
-            self.queue.run_job(job)
-
-        return job
+        return self.queue.enqueue(self.name, wrapped_args)
 
     def __str__(self) -> str:
         return f"AsyncTask({self.queue.notify_channel}, {self.name})"
