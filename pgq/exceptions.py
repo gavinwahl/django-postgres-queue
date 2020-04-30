@@ -1,17 +1,17 @@
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .models import Job
+    from .models import BaseJob
 else:
-    Job = None
+    BaseJob = None
 
 
 class PgqException(Exception):
     """Base exception for pgq"""
 
-    job: Optional[Job] = None
+    job: Optional[BaseJob] = None
 
-    def __init__(self, job: Optional[Job] = None):
+    def __init__(self, job: Optional[BaseJob] = None):
         self.job = job
 
 

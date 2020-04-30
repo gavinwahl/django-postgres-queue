@@ -7,7 +7,7 @@ from django.contrib.postgres.fields import JSONField
 DEFAULT_QUEUE_NAME = "default"
 
 
-class Job(models.Model):
+class BaseJob(models.Model):
     id = models.BigAutoField(primary_key=True)
     created_at = models.DateTimeField(default=TransactionNow)
     execute_at = models.DateTimeField(default=TransactionNow)
@@ -23,6 +23,7 @@ class Job(models.Model):
     )
 
     class Meta:
+        abstract = True
         indexes = [
             models.Index(fields=["-priority", "created_at"]),
             models.Index(fields=["queue"]),
@@ -37,7 +38,7 @@ class Job(models.Model):
         exclude_ids: Optional[Union[AbstractSet[int], Sequence[int]]] = None,
         tasks: Optional[Sequence[str]] = None,
         queue: str = DEFAULT_QUEUE_NAME,
-    ) -> Optional["Job"]:
+    ) -> Optional["BaseJob"]:
         """
         Claims the first available task and returns it. If there are no
         tasks available, returns None.
@@ -59,7 +60,7 @@ class Job(models.Model):
             WHERE += " AND TASK = ANY(%s)"
             args.append(tasks)
 
-        jobs: Sequence[Job] = list(
+        jobs: Sequence[BaseJob] = list(
             cls.objects.raw(
                 """
             DELETE FROM pgq_job
@@ -94,3 +95,7 @@ class Job(models.Model):
             "task": self.task,
             "args": self.args,
         }
+
+
+class Job(BaseJob):
+    """pgq builtin Job model"""
