@@ -96,8 +96,8 @@ class Queue(metaclass=abc.ABCMeta):
 
         assert task in self.tasks
 
-        jobs = Job.objects.bulk_create(
-            [Job(task=task, queue=self.queue, **kwargs) for kwargs in kwargs_list],
+        jobs = self.job_model.objects.bulk_create(
+            [self.job_model(task=task, queue=self.queue, **kwargs) for kwargs in kwargs_list],
             batch_size=batch_size,
         )
 
