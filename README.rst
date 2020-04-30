@@ -170,10 +170,16 @@ whatever you like. Here's an example:
 
 .. code:: python
 
+    from dpq.decorators import task
+
+    from .queues import queue
+
+    @task(queue)
     def debug_task(queue, job):
         print(job.args)
 
-To register it as a task, add it to your queue instance:
+Instead of using the task decorator, you can manually register it as a task.
+Add it to your queue instance when it is being created:
 
 .. code:: python
 
@@ -184,7 +190,14 @@ To register it as a task, add it to your queue instance:
 The key is the task name, used to queue the task. It doesn't have to match the
 function name.
 
-To queue the task, use ``enqueue`` method on your queue instance:
+To queue the task, if you used the task decorator you may:
+
+.. code:: python
+
+    debug_task.enqueue({'some_args': 0})
+
+
+To manually queue the task, use the ``enqueue`` method on your queue instance:
 
 .. code:: python
 
