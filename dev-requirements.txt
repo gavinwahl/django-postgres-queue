@@ -1,5 +1,6 @@
 Django==3.0.3
-mypy==0.761
+mypy==0.770
 mypy-extensions==0.4.3
+django-stubs==1.5.0
 psycopg2==2.8.4
 typing-extensions==3.7.4.1

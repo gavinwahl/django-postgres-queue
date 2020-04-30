@@ -81,7 +81,6 @@ DATABASES = {
         "NAME": "pgq_testproj",
         "USER": "pgq",
         "PASSWORD": "pgq",
-        "TEST": {"NAME": "pgq_testproj"},
     }
 }
 
