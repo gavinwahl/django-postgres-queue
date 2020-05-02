@@ -8,11 +8,13 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Generic,
     List,
     Optional,
     Sequence,
     Tuple,
     Type,
+    TypeVar,
 )
 
 from django.db import connection, transaction
@@ -21,13 +23,29 @@ from .exceptions import PgqException
 from .models import BaseJob, Job, DEFAULT_QUEUE_NAME
 
 
-class Queue(metaclass=abc.ABCMeta):
-    job_model: Type[BaseJob] = Job
+_Job = TypeVar("_Job", bound=BaseJob)
+
+
+class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
+    job_model: Type[_Job]
     logger = logging.getLogger(__name__)
 
+    # Mypy notes:
+    # I'm not sure how to type the `tasks` arg in the following __init__
+    # correctly. My best guess at the correct type was:
+    #   tasks: Dict[str, Callable[["BaseQueue[_Job]", _Job], Any]],
+    # Unfortunately, with what I thought would be equivalent types, task
+    # functions defined as
+    #   `def my_task(queue: Queue, job: Job) -> Any:`
+    # report the error:
+    #   Dict entry 0 has incompatible type
+    #   "str": "Callable[[Queue, Job], int]";
+    #   expected "str": "Callable[[BaseQueue[Job], Job], Any]"
+    # Might be related to https://github.com/python/mypy/issues/2354 maybe...
+    # or it could be to do with Dict invariance :/
     def __init__(
         self,
-        tasks: Dict[str, Callable[["Queue", BaseJob], Any]],
+        tasks: Dict[str, Callable[[Any, _Job], Any]],
         notify_channel: Optional[str] = None,
         queue: str = DEFAULT_QUEUE_NAME,
     ) -> None:
@@ -38,7 +56,7 @@ class Queue(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def run_once(
         self, exclude_ids: Optional[Iterable[int]] = None
-    ) -> Optional[Tuple[BaseJob, Any]]:
+    ) -> Optional[Tuple[_Job, Any]]:
         """Get a job from the queue and run it.
 
         Returns:
@@ -51,7 +69,7 @@ class Queue(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
-    def run_job(self, job: BaseJob) -> Any:
+    def run_job(self, job: _Job) -> Any:
         """Execute job, return the output of job."""
         task = self.tasks[job.task]
         start_time = time.time()
@@ -71,7 +89,7 @@ class Queue(metaclass=abc.ABCMeta):
         args: Optional[Dict[str, Any]] = None,
         execute_at: Optional[datetime.datetime] = None,
         priority: Optional[int] = None,
-    ) -> BaseJob:
+    ) -> _Job:
         assert task in self.tasks
         if args is None:
             args = {}
@@ -92,7 +110,7 @@ class Queue(metaclass=abc.ABCMeta):
         task: str,
         kwargs_list: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
-    ) -> List[BaseJob]:
+    ) -> List[_Job]:
 
         assert task in self.tasks
 
@@ -142,7 +160,7 @@ class Queue(metaclass=abc.ABCMeta):
 
     def _run_once(
         self, exclude_ids: Optional[Iterable[int]] = None
-    ) -> Optional[Tuple[BaseJob, Any]]:
+    ) -> Optional[Tuple[_Job, Any]]:
         """Get a job from the queue and run it.
 
         Implements the same function signature as ``run_once()``
@@ -171,10 +189,14 @@ class Queue(metaclass=abc.ABCMeta):
             return None
 
 
+class Queue(BaseQueue[Job]):
+    job_model = Job
+
+
 class AtMostOnceQueue(Queue):
     def run_once(
         self, exclude_ids: Optional[Iterable[int]] = None
-    ) -> Optional[Tuple[BaseJob, Any]]:
+    ) -> Optional[Tuple[Job, Any]]:
         assert not connection.in_atomic_block
         return self._run_once(exclude_ids=exclude_ids)
 
@@ -183,5 +205,5 @@ class AtLeastOnceQueue(Queue):
     @transaction.atomic
     def run_once(
         self, exclude_ids: Optional[Iterable[int]] = None
-    ) -> Optional[Tuple[BaseJob, Any]]:
+    ) -> Optional[Tuple[Job, Any]]:
         return self._run_once(exclude_ids=exclude_ids)
