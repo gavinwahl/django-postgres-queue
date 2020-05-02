@@ -1,10 +1,13 @@
-from typing import Any, Dict, Iterable, Optional, Sequence
+from typing import Any, Dict, Iterable, Optional, Sequence, Type, TypeVar
 
 from django.db import models
 from django.contrib.postgres.functions import TransactionNow
 from django.contrib.postgres.fields import JSONField
 
 DEFAULT_QUEUE_NAME = "default"
+
+
+_Self = TypeVar("_Self", bound="BaseJob")
 
 
 class BaseJob(models.Model):
@@ -34,11 +37,11 @@ class BaseJob(models.Model):
 
     @classmethod
     def dequeue(
-        cls,
+        cls: Type[_Self],
         exclude_ids: Optional[Iterable[int]] = None,
         tasks: Optional[Sequence[str]] = None,
         queue: str = DEFAULT_QUEUE_NAME,
-    ) -> Optional["BaseJob"]:
+    ) -> Optional[_Self]:
         """
         Claims the first available task and returns it. If there are no
         tasks available, returns None.
@@ -60,7 +63,7 @@ class BaseJob(models.Model):
             WHERE += " AND TASK = ANY(%s)"
             args.append(tasks)
 
-        jobs: Sequence[BaseJob] = list(
+        jobs = list(
             cls.objects.raw(
                 """
             DELETE FROM pgq_job
