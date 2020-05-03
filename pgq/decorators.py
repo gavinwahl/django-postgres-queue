@@ -6,6 +6,8 @@ import logging
 import random
 from typing import Any, Callable, Dict, Optional, Type, TYPE_CHECKING
 
+from django.db import transaction
+
 if TYPE_CHECKING:
     from .queue import Queue
     from .models import BaseJob
@@ -58,45 +60,6 @@ def exponential_with_jitter(offset: int = 6) -> DelayFnType:
 
 
 def retry(
-    max_retries: int,
-    delayfn: Optional[DelayFnType] = None,
-    Exc: Type[Exception] = Exception,
-) -> Callable[[TaskFnType], TaskFnType]:
-
-    if delayfn is None:
-        delayfn = exponential_with_jitter()
-
-    def decorator(fn: TaskFnType) -> TaskFnType:
-        logger = logging.getLogger(__name__)
-
-        def inner(queue: Queue, job: BaseJob) -> Any:
-            try:
-                return fn(queue, job)
-            except Exc as e:
-                retries = job.args.get("retries", 0)
-                if retries < max_retries:
-                    job.args["retries"] = retries + 1
-                    delay = delayfn(retries)  # type: ignore
-                    job.execute_at += delay
-                    job.save(force_insert=True)
-                    logger.warning(
-                        "Task %r failed: %s. Retrying in %s.",
-                        job,
-                        e,
-                        delay,
-                        exc_info=True,
-                    )
-                else:
-                    logger.exception(
-                        "Task %r exceeded its retry limit: %s.", job, e, exc_info=True,
-                    )
-
-        return inner
-
-    return decorator
-
-
-def autoretry(
     max_retries: int = 0,
     delay_offset_seconds: int = 5,
     delayfn: Optional[DelayFnType] = None,
@@ -121,7 +84,10 @@ def autoretry(
 
             try:
                 args = copy.deepcopy(job.args)
-                result = fn(queue, job, args["func_args"], JobMetaType(**args["meta"]))
+                with transaction.atomic():
+                    result = fn(
+                        queue, job, args["func_args"], JobMetaType(**args["meta"])
+                    )
             except Exc as e:
                 retries = job.args["meta"].get("retries", 0)
                 if retries < max_retries:
@@ -209,7 +175,7 @@ def task(
     def register(fn: Callable[..., Any]) -> AsyncTask:
         name = fn.__name__
         assert name not in queue.tasks
-        fn = autoretry(
+        fn = retry(
             max_retries=max_retries,
             delay_offset_seconds=delay_offset_seconds,
             on_failure=on_failure,
