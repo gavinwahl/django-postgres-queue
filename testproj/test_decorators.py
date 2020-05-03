@@ -5,7 +5,7 @@ from django.test import TestCase
 
 from pgq.decorators import task, JobMeta
 from pgq.models import Job
-from pgq.queue import AtLeastOnceQueue, Queue
+from pgq.queue import AtLeastOnceQueue, AtMostOnceQueue, Queue
 
 
 class PgqDecoratorsTests(TestCase):
@@ -25,9 +25,9 @@ class PgqDecoratorsTests(TestCase):
         self.assertIn("demotask", queue.tasks)
         queue.run_once()
 
-    def test_retry_during_database_failure(self) -> None:
+    def test_atleastonce_retry_during_database_failure(self) -> None:
         """
-        Force a database error in the task.
+        Force a database error in the task. Check that it was retried.
         """
 
         queue = AtLeastOnceQueue(tasks={})
