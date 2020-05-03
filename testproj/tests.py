@@ -1,12 +1,14 @@
 import datetime
 from typing import Any, Iterable, Optional, Tuple
 
+from django.contrib.auth.models import Group
 from django.db.transaction import atomic
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
+from pgq.decorators import task, JobMeta
 from pgq.models import Job, DEFAULT_QUEUE_NAME
-from pgq.queue import AtLeastOnceQueue, BaseQueue, Queue
+from pgq.queue import AtLeastOnceQueue, AtMostOnceQueue, BaseQueue, Queue
 
 from .models import AltJob
 
@@ -148,11 +150,7 @@ class PgqQueueTests(TestCase):
         self.assertEqual(AltJob.objects.count(), 0)
 
         jobs = queue.bulk_enqueue(
-            "demotask",
-            [
-                {"args": {"count": 5}},
-                {"args": {"count": 7}},
-            ],
+            "demotask", [{"args": {"count": 5}}, {"args": {"count": 7}},],
         )
 
         self.assertEqual(AltJob.objects.count(), 2)
@@ -187,7 +185,8 @@ class PgqQueueTests(TestCase):
 class PgqNotifyTests(TransactionTestCase):
     def test_notify_and_listen(self) -> None:
         """
-        After `listen()`, `enqueue()` makes a notification appear via `filter_notifies()`.
+        After `listen()`, `enqueue()` makes a notification
+        appear via `filter_notifies()`.
         """
         NAME = "machine_a"
         queue = AtLeastOnceQueue(
@@ -249,3 +248,25 @@ class PgqNotifyTests(TransactionTestCase):
         )
 
         self.assertEqual(len(queue.wait()), 1)
+
+    def test_atmostonce_retry_during_database_failure(self) -> None:
+        """
+        As above. but for atmost once queue
+        """
+
+        queue = AtMostOnceQueue(tasks={})
+
+        @task(queue, max_retries=2)
+        def failuretask(queue: Queue, job: Job, args: Any, meta: JobMeta) -> None:
+            # group has max 150 chars for its name.
+            Group.objects.create(name="!" * 151)
+            return None
+
+        failuretask.enqueue({})
+        originaljob = Job.objects.all()[0]
+
+        queue.run_once()
+
+        retryjob = Job.objects.all()[0]
+        self.assertNotEqual(originaljob.id, retryjob.id)
+        self.assertEqual(retryjob.args["meta"]["retries"], 1)
