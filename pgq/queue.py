@@ -8,11 +8,14 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Generic,
     List,
     Optional,
     Sequence,
     Tuple,
     Type,
+    TypeVar,
+    TYPE_CHECKING,
 )
 
 from django.db import connection, transaction
@@ -21,13 +24,21 @@ from .exceptions import PgqException
 from .models import BaseJob, Job, DEFAULT_QUEUE_NAME
 
 
-class Queue(metaclass=abc.ABCMeta):
-    job_model: Type[BaseJob] = Job
+_Job = TypeVar("_Job", bound=BaseJob)
+# mypy doesn't support binding to BaseQueue[_Job] and may never do so...
+if TYPE_CHECKING:
+    _Self = TypeVar("_Self", bound="BaseQueue"[Any])
+else:
+    _Self = None
+
+
+class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
+    job_model: Type[_Job]
     logger = logging.getLogger(__name__)
 
     def __init__(
-        self,
-        tasks: Dict[str, Callable[["Queue", BaseJob], Any]],
+        self: _Self,
+        tasks: Dict[str, Callable[[_Self, _Job], Any]],
         notify_channel: Optional[str] = None,
         queue: str = DEFAULT_QUEUE_NAME,
     ) -> None:
@@ -38,7 +49,7 @@ class Queue(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def run_once(
         self, exclude_ids: Optional[Iterable[int]] = None
-    ) -> Optional[Tuple[BaseJob, Any]]:
+    ) -> Optional[Tuple[_Job, Any]]:
         """Get a job from the queue and run it.
 
         Returns:
@@ -51,7 +62,7 @@ class Queue(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
-    def run_job(self, job: BaseJob) -> Any:
+    def run_job(self: _Self, job: _Job) -> Any:
         """Execute job, return the output of job."""
         task = self.tasks[job.task]
         start_time = time.time()
@@ -66,12 +77,12 @@ class Queue(metaclass=abc.ABCMeta):
         return retval
 
     def enqueue(
-        self,
+        self: _Self,
         task: str,
         args: Optional[Dict[str, Any]] = None,
         execute_at: Optional[datetime.datetime] = None,
         priority: Optional[int] = None,
-    ) -> BaseJob:
+    ) -> _Job:
         assert task in self.tasks
         if args is None:
             args = {}
@@ -88,11 +99,11 @@ class Queue(metaclass=abc.ABCMeta):
         return job
 
     def bulk_enqueue(
-        self,
+        self: _Self,
         task: str,
         kwargs_list: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
-    ) -> List[BaseJob]:
+    ) -> List[_Job]:
 
         assert task in self.tasks
 
@@ -113,7 +124,7 @@ class Queue(metaclass=abc.ABCMeta):
         with connection.cursor() as cur:
             cur.execute('LISTEN "{}";'.format(self.notify_channel))
 
-    def wait(self, timeout: int = 30) -> Sequence[str]:
+    def wait(self: _Self, timeout: int = 30) -> Sequence[str]:
         connection.connection.poll()
         notifies = self.filter_notifies()
         if notifies:
@@ -123,7 +134,7 @@ class Queue(metaclass=abc.ABCMeta):
         connection.connection.poll()
         return self.filter_notifies()
 
-    def filter_notifies(self) -> Sequence[str]:
+    def filter_notifies(self: _Self) -> Sequence[str]:
         notifies = [
             i
             for i in connection.connection.notifies
@@ -136,13 +147,13 @@ class Queue(metaclass=abc.ABCMeta):
         ]
         return notifies
 
-    def notify(self) -> None:
+    def notify(self: _Self) -> None:
         with connection.cursor() as cur:
             cur.execute('NOTIFY "%s";' % self.notify_channel)
 
     def _run_once(
-        self, exclude_ids: Optional[Iterable[int]] = None
-    ) -> Optional[Tuple[BaseJob, Any]]:
+        self: _Self, exclude_ids: Optional[Iterable[int]] = None
+    ) -> Optional[Tuple[_Job, Any]]:
         """Get a job from the queue and run it.
 
         Implements the same function signature as ``run_once()``
@@ -171,10 +182,14 @@ class Queue(metaclass=abc.ABCMeta):
             return None
 
 
+class Queue(BaseQueue[Job]):
+    job_model = Job
+
+
 class AtMostOnceQueue(Queue):
     def run_once(
         self, exclude_ids: Optional[Iterable[int]] = None
-    ) -> Optional[Tuple[BaseJob, Any]]:
+    ) -> Optional[Tuple[Job, Any]]:
         assert not connection.in_atomic_block
         return self._run_once(exclude_ids=exclude_ids)
 
@@ -183,5 +198,5 @@ class AtLeastOnceQueue(Queue):
     @transaction.atomic
     def run_once(
         self, exclude_ids: Optional[Iterable[int]] = None
-    ) -> Optional[Tuple[BaseJob, Any]]:
+    ) -> Optional[Tuple[Job, Any]]:
         return self._run_once(exclude_ids=exclude_ids)

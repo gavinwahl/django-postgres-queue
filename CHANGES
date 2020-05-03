@@ -1,7 +1,18 @@
+0.6.1 (2020-04-30)
+==================
+
+- Abstract job model
+- bulk_enqueue thanks @danifus
+- mypy fixes
+
 0.5.2 (2020-02-28)
+==================
+
 - new migrations and tables.
 
 0.5.1 (2020-02-28)
+==================
+
 - rename to pgq to avoid clashing namespace.
 
 0.5.0 (2020-02-28)
