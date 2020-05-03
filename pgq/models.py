@@ -1,6 +1,7 @@
 from typing import Any, Dict, Iterable, Optional, Sequence, Type, TypeVar
 
 from django.db import models
+from django.db import connection
 from django.contrib.postgres.functions import TransactionNow
 from django.contrib.postgres.fields import JSONField
 
@@ -66,10 +67,10 @@ class BaseJob(models.Model):
         jobs = list(
             cls.objects.raw(
                 """
-            DELETE FROM pgq_job
+            DELETE FROM {db_table}
             WHERE id = (
                 SELECT id
-                FROM pgq_job
+                FROM {db_table}
                 {WHERE}
                 ORDER BY priority DESC, created_at
                 FOR UPDATE SKIP LOCKED
@@ -77,7 +78,7 @@ class BaseJob(models.Model):
             )
             RETURNING *;
             """.format(
-                    WHERE=WHERE
+                    db_table=connection.ops.quote_name(cls._meta.db_table), WHERE=WHERE
                 ),
                 args,
             )
