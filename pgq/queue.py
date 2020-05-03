@@ -15,6 +15,7 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
+    TYPE_CHECKING,
 )
 
 from django.db import connection, transaction
@@ -25,7 +26,10 @@ from .models import BaseJob, Job, DEFAULT_QUEUE_NAME
 
 _Job = TypeVar("_Job", bound=BaseJob)
 # mypy doesn't support binding to BaseQueue[_Job] and may never do so...
-_Self = TypeVar("_Self", bound="BaseQueue"[Any])
+if TYPE_CHECKING:
+    _Self = TypeVar("_Self", bound="BaseQueue"[Any])
+else:
+    _Self = None
 
 
 class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
