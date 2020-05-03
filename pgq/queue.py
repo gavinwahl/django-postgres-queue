@@ -24,28 +24,17 @@ from .models import BaseJob, Job, DEFAULT_QUEUE_NAME
 
 
 _Job = TypeVar("_Job", bound=BaseJob)
+# mypy doesn't support binding to BaseQueue[_Job] and may never do so...
+_Self = TypeVar("_Self", bound="BaseQueue"[Any])
 
 
 class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
     job_model: Type[_Job]
     logger = logging.getLogger(__name__)
 
-    # Mypy notes:
-    # I'm not sure how to type the `tasks` arg in the following __init__
-    # correctly. My best guess at the correct type was:
-    #   tasks: Dict[str, Callable[["BaseQueue[_Job]", _Job], Any]],
-    # Unfortunately, with what I thought would be equivalent types, task
-    # functions defined as
-    #   `def my_task(queue: Queue, job: Job) -> Any:`
-    # report the error:
-    #   Dict entry 0 has incompatible type
-    #   "str": "Callable[[Queue, Job], int]";
-    #   expected "str": "Callable[[BaseQueue[Job], Job], Any]"
-    # Might be related to https://github.com/python/mypy/issues/2354 maybe...
-    # or it could be to do with Dict invariance :/
     def __init__(
-        self,
-        tasks: Dict[str, Callable[[Any, _Job], Any]],
+        self: _Self,
+        tasks: Dict[str, Callable[[_Self, _Job], Any]],
         notify_channel: Optional[str] = None,
         queue: str = DEFAULT_QUEUE_NAME,
     ) -> None:
@@ -69,7 +58,7 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
-    def run_job(self, job: _Job) -> Any:
+    def run_job(self: _Self, job: _Job) -> Any:
         """Execute job, return the output of job."""
         task = self.tasks[job.task]
         start_time = time.time()
@@ -84,7 +73,7 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
         return retval
 
     def enqueue(
-        self,
+        self: _Self,
         task: str,
         args: Optional[Dict[str, Any]] = None,
         execute_at: Optional[datetime.datetime] = None,
@@ -106,7 +95,7 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
         return job
 
     def bulk_enqueue(
-        self,
+        self: _Self,
         task: str,
         kwargs_list: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
@@ -131,7 +120,7 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
         with connection.cursor() as cur:
             cur.execute('LISTEN "{}";'.format(self.notify_channel))
 
-    def wait(self, timeout: int = 30) -> Sequence[str]:
+    def wait(self: _Self, timeout: int = 30) -> Sequence[str]:
         connection.connection.poll()
         notifies = self.filter_notifies()
         if notifies:
@@ -141,7 +130,7 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
         connection.connection.poll()
         return self.filter_notifies()
 
-    def filter_notifies(self) -> Sequence[str]:
+    def filter_notifies(self: _Self) -> Sequence[str]:
         notifies = [
             i
             for i in connection.connection.notifies
@@ -154,12 +143,12 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
         ]
         return notifies
 
-    def notify(self) -> None:
+    def notify(self: _Self) -> None:
         with connection.cursor() as cur:
             cur.execute('NOTIFY "%s";' % self.notify_channel)
 
     def _run_once(
-        self, exclude_ids: Optional[Iterable[int]] = None
+        self: _Self, exclude_ids: Optional[Iterable[int]] = None
     ) -> Optional[Tuple[_Job, Any]]:
         """Get a job from the queue and run it.
 
