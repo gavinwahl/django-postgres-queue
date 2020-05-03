@@ -1,11 +1,14 @@
 import datetime
+from typing import Any, Iterable, Optional, Tuple
 
 from django.db.transaction import atomic
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
 from pgq.models import Job, DEFAULT_QUEUE_NAME
-from pgq.queue import AtLeastOnceQueue, Queue
+from pgq.queue import AtLeastOnceQueue, BaseQueue, Queue
+
+from .models import AltJob
 
 
 def demotask(queue: Queue, job: Job) -> int:
@@ -80,7 +83,7 @@ class PgqQueueTests(TestCase):
 
         day_from_now = timezone.now() + datetime.timedelta(days=1)
         task_name = "demotask"
-        queue.bulk_enqueue(
+        ret_jobs = queue.bulk_enqueue(
             task_name,
             [
                 {"args": {"count": 5}},
@@ -88,6 +91,7 @@ class PgqQueueTests(TestCase):
             ],
         )
         jobs = Job.objects.all()
+        self.assertEqual(len(ret_jobs), 2)
         self.assertEqual(len(jobs), 2)
         for job in jobs:
             self.assertEqual(job.queue, NAME)
@@ -99,6 +103,85 @@ class PgqQueueTests(TestCase):
         self.assertEqual(jobs[1].args["count"], 7)
         self.assertEqual(jobs[1].priority, 10)
         self.assertEqual(jobs[1].execute_at, day_from_now)
+
+    def test_queue_subclass_enqueue(self):
+        """
+        BaseQueue subclassed enqueue with different job_model uses its own table.
+        """
+        NAME = "machine_a"
+
+        class AltQueue(BaseQueue[AltJob]):
+            job_model = AltJob
+
+            def run_once(
+                self, exclude_ids: Optional[Iterable[int]] = None
+            ) -> Optional[Tuple[AltJob, Any]]:
+                return self._run_once(exclude_ids=exclude_ids)
+
+        queue = AltQueue(tasks={"demotask": demotask}, queue=NAME)
+
+        self.assertEqual(queue.job_model, AltJob)
+        self.assertEqual(AltJob.objects.count(), 0)
+
+        job = queue.enqueue("demotask", args={"count": 1})
+
+        self.assertIsInstance(job, AltJob)
+        self.assertEqual(AltJob.objects.count(), 1)
+
+    def test_queue_subclass_bulk_enqueue(self):
+        """
+        BaseQueue subclassed bulk_enqueue with different job_model uses its own table.
+        """
+        NAME = "machine_a"
+
+        class AltQueue(BaseQueue[AltJob]):
+            job_model = AltJob
+
+            def run_once(
+                self, exclude_ids: Optional[Iterable[int]] = None
+            ) -> Optional[Tuple[AltJob, Any]]:
+                return self._run_once(exclude_ids=exclude_ids)
+
+        queue = AltQueue(tasks={"demotask": demotask}, queue=NAME)
+
+        self.assertEqual(queue.job_model, AltJob)
+        self.assertEqual(AltJob.objects.count(), 0)
+
+        jobs = queue.bulk_enqueue(
+            "demotask",
+            [
+                {"args": {"count": 5}},
+                {"args": {"count": 7}},
+            ],
+        )
+
+        self.assertEqual(AltJob.objects.count(), 2)
+        self.assertIsInstance(jobs[0], AltJob)
+
+    def test_basejob_subclass_dequeue(self):
+        NAME = "machine_a"
+
+        class AltQueue(BaseQueue[AltJob]):
+            job_model = AltJob
+
+            def run_once(
+                self, exclude_ids: Optional[Iterable[int]] = None
+            ) -> Optional[Tuple[AltJob, Any]]:
+                return self._run_once(exclude_ids=exclude_ids)
+
+        queue = AltQueue(tasks={"demotask": demotask}, queue=NAME)
+
+        self.assertEqual(queue.job_model, AltJob)
+        self.assertEqual(AltJob.objects.count(), 0)
+
+        job = queue.enqueue("demotask", args={"count": 1})
+
+        self.assertEqual(AltJob.objects.count(), 1)
+
+        db_job = AltJob.dequeue(queue=queue.queue)
+
+        self.assertEqual(job, db_job)
+        self.assertEqual(AltJob.objects.count(), 0)
 
 
 class PgqNotifyTests(TransactionTestCase):
