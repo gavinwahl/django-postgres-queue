@@ -207,6 +207,24 @@ Assuming you have a worker running for this queue, the task will be run
 immediately. The second argument must be a single json-serializeable value and
 will be available to the task as ``job.args``.
 
+Tasks registered using the ``@task`` decorator will only be available on the
+queue if the file in which the task is defined has been imported. If your
+worker doesn't import the file containing the ``@task`` decorators somewhere,
+the tasks will not be available for dispatch. Importing files in the
+``apps.py`` ``AppConfig.ready()`` method will ensure that the tasks are always
+available on the queue without having to import them in your worker just for
+the import side effects.
+
+.. code:: python
+
+   # Contents of someapp/apps.py
+   from django.apps import AppConfig
+
+   class SomeAppAppConfig(AppConfig):
+       def ready(self):
+           # Tasks registered with @task are defined in this import
+           import someapp.tasks
+
 Multiple Queues
 ---------------
 
