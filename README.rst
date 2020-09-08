@@ -170,7 +170,7 @@ whatever you like. Here's an example:
 
 .. code:: python
 
-    from dpq.decorators import task
+    from pgq.decorators import task
 
     from .queues import queue
 
