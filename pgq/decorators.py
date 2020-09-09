@@ -164,7 +164,7 @@ def task(
     """
     Decorator to register the task to the queue.
 
-    @dpq_task(queuename, max_retries=5)
+    @task(queuename, max_retries=5)
 
     delay_offset_seconds:
         5th retry will take half hour at 5; delay (seconds) = 2 ** (retry + offset)
