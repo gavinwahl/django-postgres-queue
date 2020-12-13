@@ -146,7 +146,7 @@ at-most-once delivery.
 
 django-postgres-queue comes with a management command base class that you can
 use to consume your tasks. It can be called whatever you like, for example in a
-``someapp/managment/commands/worker.py``:
+``someapp/management/commands/worker.py``:
 
 .. code:: python
 
