@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.postgres.functions import TransactionNow
-from django.contrib.postgres.fields import JSONField
 
 
 class Job(models.Model):
@@ -12,7 +11,7 @@ class Job(models.Model):
         help_text="Jobs with higher priority will be processed first."
     )
     task = models.CharField(max_length=255)
-    args = JSONField()
+    args = models.JSONField()
 
     class Meta:
         indexes = [
