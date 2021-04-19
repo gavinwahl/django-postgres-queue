@@ -1,4 +1,4 @@
-0.4.4 (unreleased)
+0.4.4 (2021-04-19)
 ==================
 
 - Fix db exception handling in @retry
