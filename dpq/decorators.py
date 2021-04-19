@@ -2,6 +2,8 @@ import datetime
 import logging
 import random
 
+from django.db import transaction
+
 
 def repeat(delay):
     """
@@ -44,7 +46,8 @@ def retry(max_retries, delayfn=exponential_with_jitter(), Exc=Exception):
 
         def inner(queue, job):
             try:
-                return fn(queue, job)
+                with transaction.atomic():
+                    return fn(queue, job)
             except Exc as e:
                 retries = job.args.get('retries', 0)
                 if retries < max_retries:
