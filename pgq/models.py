@@ -3,7 +3,11 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Type, TypeVar
 from django.db import models
 from django.db import connection
 from django.contrib.postgres.functions import TransactionNow
-from django.contrib.postgres.fields import JSONField
+
+try:
+    from django.db.models import JSONField
+except ImportError:
+    from django.contrib.postgres.fields import JSONField  # type: ignore[misc]
 
 DEFAULT_QUEUE_NAME = "default"
 
