@@ -21,6 +21,8 @@ jobs:
           POSTGRES_USER: pgq
           POSTGRES_PASSWORD: pgq
           POSTGRES_DB: pgq_testproj
+          TZ: UTC
+          PGTZ: UTC
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
