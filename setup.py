@@ -4,7 +4,7 @@ from shutil import rmtree
 
 from setuptools import setup, Command
 
-VERSION = "0.6.1"
+VERSION = "0.6.2"
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 
@@ -49,14 +49,21 @@ class UploadCommand(Command):
 setup(
     name="django-pg-queue",
     version=VERSION,
-    packages=["pgq", "pgq.migrations",],
+    packages=[
+        "pgq",
+        "pgq.migrations",
+    ],
     package_data={"pgq": ["py.typed"]},
     license="BSD",
     long_description=open("README.rst").read(),
     author="SweetProcess",
     author_email="support@sweetprocess.com",
     url="https://github.com/SweetProcess/django-pg-queue",
-    install_requires=["Django>=2.1",],
+    install_requires=[
+        "Django>=2.1",
+    ],
     # $ setup.py publish support.
-    cmdclass={"upload": UploadCommand,},
+    cmdclass={
+        "upload": UploadCommand,
+    },
 )
