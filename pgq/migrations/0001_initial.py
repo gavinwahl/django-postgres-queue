@@ -5,6 +5,12 @@ import django.contrib.postgres.functions
 from django.db import migrations, models
 
 
+try:
+    from django.db.models import JSONField
+except ImportError:
+    from django.contrib.postgres.fields import JSONField  # type: ignore[misc]
+
+
 class Migration(migrations.Migration):
 
     initial = True
@@ -36,7 +42,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("task", models.CharField(max_length=255)),
-                ("args", django.contrib.postgres.fields.jsonb.JSONField()),
+                ("args", JSONField()),
                 (
                     "queue",
                     models.CharField(
