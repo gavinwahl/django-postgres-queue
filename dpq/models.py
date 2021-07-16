@@ -1,9 +1,10 @@
 from django.db import models
+from django.db import connection
 from django.contrib.postgres.functions import TransactionNow
 from django.contrib.postgres.fields import JSONField
 
 
-class Job(models.Model):
+class BaseJob(models.Model):
     id = models.BigAutoField(primary_key=True)
     created_at = models.DateTimeField(default=TransactionNow)
     execute_at = models.DateTimeField(default=TransactionNow)
@@ -18,6 +19,7 @@ class Job(models.Model):
         indexes = [
             models.Index(fields=['-priority', 'created_at']),
         ]
+        abstract = True
 
     def __str__(self):
         return '%s: %s' % (self.id, self.task)
@@ -38,10 +40,10 @@ class Job(models.Model):
 
         tasks = list(cls.objects.raw(
             """
-            DELETE FROM dpq_job
+            DELETE FROM {db_table}
             WHERE id = (
                 SELECT id
-                FROM dpq_job
+                FROM {db_table}
                 WHERE execute_at <= now()
                   AND NOT id = ANY(%s)
                 ORDER BY priority DESC, created_at
@@ -49,7 +51,9 @@ class Job(models.Model):
                 LIMIT 1
             )
             RETURNING *;
-            """,
+            """.format(
+                db_table=connection.ops.quote_name(cls._meta.db_table),
+            ),
             [list(exclude_ids)]
         ))
         assert len(tasks) <= 1
@@ -67,3 +71,6 @@ class Job(models.Model):
             'task': self.task,
             'args': self.args,
         }
+
+class Job(BaseJob):
+    pass
