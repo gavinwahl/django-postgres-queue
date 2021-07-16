@@ -39,23 +39,21 @@ class Worker(BaseCommand):
         # Prevents tasks that failed from blocking others.
         failed_tasks = set()
         while True:
-            job = None
             self._in_task = True
-            try:
-                job = self.queue.run_once(exclude_ids=failed_tasks)
-            except Exception as e:
-                if hasattr(e, 'job'):
-                    # Make sure we do at least one more iteration of the loop
-                    # with the failed task excluded.
-                    job = e.job
-                    self.logger.exception('Error in %r: %r.', job, e, extra={
+            result = self.queue.run_once(exclude_ids=failed_tasks)
+            job, retval, exc = result or (None, None, None)
+            if exc:
+                if job:
+                    self.logger.exception('Error in %r: %r.', job, exc, extra={
                         'data': {
                             'job': job.to_json(),
                         },
                     })
                     failed_tasks.add(job.id)
                 else:
-                    raise
+                    # This is an exception before a task could even be
+                    # retrieved, so it's probably fatal
+                    raise exc
             self._in_task = False
             if self._shutdown:
                 raise InterruptedError

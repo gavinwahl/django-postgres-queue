@@ -81,31 +81,40 @@ class Queue(object, metaclass=abc.ABCMeta):
         with connection.cursor() as cur:
             cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
 
-    def _run_once(self, exclude_ids=[]):
-        job = self.job_model.dequeue(exclude_ids=exclude_ids)
-        if job:
-            self.logger.debug('Claimed %r.', job, extra={
-                'data': {
-                    'job': job.to_json(),
-                }
-            })
-            try:
-                return job, self.run_job(job)
-            except Exception as e:
-                # Add job info to exception to be accessible for logging.
-                e.job = job
-                raise
-        else:
-            return None
-
 
 class AtMostOnceQueue(Queue):
     def run_once(self, exclude_ids=[]):
         assert not connection.in_atomic_block
-        return self._run_once(exclude_ids=exclude_ids)
+        job = None
+        try:
+            job = self.job_model.dequeue(exclude_ids=exclude_ids)
+            if job:
+                self.logger.debug('Claimed %r.', job, extra={
+                    'data': {
+                        'job': job.to_json(),
+                    }
+                })
+                return (job, self.run_job(job), None)
+            else:
+                return None
+        except Exception as e:
+            return (job, None, e)
 
 
 class AtLeastOnceQueue(Queue):
-    @transaction.atomic
     def run_once(self, exclude_ids=[]):
-        return self._run_once(exclude_ids=exclude_ids)
+        job = None
+        try:
+            with transaction.atomic():
+                job = self.job_model.dequeue(exclude_ids=exclude_ids)
+                if job:
+                    self.logger.debug('Claimed %r.', job, extra={
+                        'data': {
+                            'job': job.to_json(),
+                        }
+                    })
+                    return (job, self.run_job(job), None)
+                else:
+                    return None
+        except Exception as e:
+            return (job, None, e)

@@ -1,7 +1,9 @@
-0.4.5 (unreleased)
+1.0.0 (unreleased)
 ==================
 
-- Nothing changed yet.
+- Changed signature of Queue.run_job. It now returns None or a 3-tuple of
+  (job, retval, None) or (job, None, exception).
+- Fix crash when a job raises an exception in a transaction.on_commit function.
 
 
 0.4.4 (2021-04-19)

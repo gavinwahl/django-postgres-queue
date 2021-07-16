@@ -1,11 +1,13 @@
 import time
 from datetime import timedelta
+from django.db import transaction
 
 from dpq.queue import AtLeastOnceQueue
 from dpq.decorators import repeat
 
 
 def foo(queue, job):
+    transaction.on_commit(lambda: 1/0)
     print('foo {}'.format(job.args))
 
 
