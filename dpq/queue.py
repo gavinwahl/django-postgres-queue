@@ -48,7 +48,7 @@ class Queue(object, metaclass=abc.ABCMeta):
 
         job = self.job_model.objects.create(**kwargs)
         if self.notify_channel:
-            self.notify(job)
+            self.notify()
         return job
 
     def listen(self):
@@ -77,9 +77,9 @@ class Queue(object, metaclass=abc.ABCMeta):
         ]
         return notifies
 
-    def notify(self, job):
+    def notify(self):
         with connection.cursor() as cur:
-            cur.execute('NOTIFY "{}", %s;'.format(self.notify_channel), [str(job.pk)])
+            cur.execute('NOTIFY "{}";'.format(self.notify_channel))
 
 
 class AtMostOnceQueue(Queue):

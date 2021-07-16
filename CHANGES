@@ -4,6 +4,7 @@
 - Changed signature of Queue.run_job. It now returns None or a 3-tuple of
   (job, retval, None) or (job, None, exception).
 - Fix crash when a job raises an exception in a transaction.on_commit function.
+- Remove payload from NOTIFY notifications. It was not actually used.
 
 
 0.4.4 (2021-04-19)
