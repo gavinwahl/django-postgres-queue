@@ -1,7 +1,11 @@
 from django.db import models
 from django.db import connection
 from django.contrib.postgres.functions import TransactionNow
-from django.contrib.postgres.fields import JSONField
+try:
+    from django.db.models import JSONField
+except ImportError:
+    # django < 3.1
+    from django.contrib.postgres.fields import JSONField
 
 
 class BaseJob(models.Model):
