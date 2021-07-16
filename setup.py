@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='django-postgres-queue',
-    version='1.0.0',
+    version='1.0.1.dev0',
     packages=[
         'dpq',
         'dpq.migrations',
