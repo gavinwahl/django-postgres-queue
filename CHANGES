@@ -1,4 +1,4 @@
-1.0.0 (unreleased)
+1.0.0 (2021-07-16)
 ==================
 
 - Changed signature of Queue.run_job. It now returns None or a 3-tuple of
