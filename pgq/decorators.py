@@ -175,13 +175,12 @@ def task(
     def register(fn: Callable[..., Any]) -> AsyncTask:
         name = fn.__name__
         assert name not in queue.tasks
-        fn = retry(
+        queue.tasks[name] = retry(
             max_retries=max_retries,
             delay_offset_seconds=delay_offset_seconds,
             on_failure=on_failure,
             JobMetaType=JobMetaType,
         )(fn)
-        queue.tasks[name] = fn
         return AsyncTask(queue, name)
 
     return register
