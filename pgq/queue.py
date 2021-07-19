@@ -1,4 +1,5 @@
 import abc
+import contextlib
 import datetime
 import logging
 import select
@@ -30,6 +31,15 @@ if TYPE_CHECKING:
     _Self = TypeVar("_Self", bound="BaseQueue"[Any])
 else:
     _Self = None
+
+
+@contextlib.contextmanager
+def maybe_atomic(is_atomic: bool) -> Optional[transaction.Atomic]:
+    if is_atomic:
+        with transaction.atomic() as ctx:
+            yield ctx
+    else:
+        yield None
 
 
 class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
@@ -152,7 +162,7 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
             cur.execute('NOTIFY "%s";' % self.notify_channel)
 
     def _run_once(
-        self: _Self, exclude_ids: Optional[Iterable[int]] = None
+        self: _Self, exclude_ids: Optional[Iterable[int]] = None, is_atomic: bool = True
     ) -> Optional[Tuple[_Job, Any]]:
         """Get a job from the queue and run it.
 
@@ -166,20 +176,21 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
         If a job fails, ``PgqException`` is raised with the job object that
         failed stored in it.
         """
-        job = self.job_model.dequeue(
-            exclude_ids=exclude_ids, queue=self.queue, tasks=list(self.tasks)
-        )
-        if job:
-            self.logger.debug(
-                "Claimed %r.", job, extra={"data": {"job": job.to_json(),}}
-            )
-            try:
-                return job, self.run_job(job)
-            except Exception as e:
-                # Add job info to exception to be accessible for logging.
-                raise PgqException(job=job) from e
-        else:
-            return None
+        try:
+            with maybe_atomic(is_atomic):
+                job = self.job_model.dequeue(
+                    exclude_ids=exclude_ids, queue=self.queue, tasks=list(self.tasks)
+                )
+                if job:
+                    self.logger.debug(
+                        "Claimed %r.", job, extra={"data": {"job": job.to_json(),}}
+                    )
+                    return job, self.run_job(job)
+                else:
+                    return None
+        except Exception as e:
+            # Add job info to exception to be accessible for logging.
+            raise PgqException(job=job) from e
 
 
 class Queue(BaseQueue[Job]):
@@ -191,12 +202,11 @@ class AtMostOnceQueue(Queue):
         self, exclude_ids: Optional[Iterable[int]] = None
     ) -> Optional[Tuple[Job, Any]]:
         assert not connection.in_atomic_block
-        return self._run_once(exclude_ids=exclude_ids)
+        return self._run_once(exclude_ids=exclude_ids, is_atomic=False)
 
 
 class AtLeastOnceQueue(Queue):
-    @transaction.atomic
     def run_once(
         self, exclude_ids: Optional[Iterable[int]] = None
     ) -> Optional[Tuple[Job, Any]]:
-        return self._run_once(exclude_ids=exclude_ids)
+        return self._run_once(exclude_ids=exclude_ids, is_atomic=True)

@@ -109,6 +109,21 @@ Comparison to Celery
 django-pg-queue fills the same role as Celery. You must use postgres as the backend
 and the library is small enough that you can read and understand all the code.
 
+
+A note on the use of ``AtLeastOnceQueue`` and Django's ``transaction.on_commit()``
+----------------------------------------------------------------------------------
+
+A failure in an ``on_commit()`` callback will not cause that job to be retried
+when using an ``AtLeastOnceQueue`` (usually a job in an ``AtLeastOnceQueue``
+queue will remain in the queue if the job fails).  This is because
+``on_commit()`` callbacks are executed after the transaction has been committed
+and, for django-pg-queue, the job is removed from the queue when the transaction
+commits.
+
+If you require more certainty that the code in an ``on_commit()`` callback is
+executed successfully, you may need to ensure it is idempotent and call it from
+within the job rather than using ``on_commit()``.
+
 Usage
 =====
 
