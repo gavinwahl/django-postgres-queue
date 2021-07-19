@@ -34,12 +34,12 @@ else:
 
 
 @contextlib.contextmanager
-def maybe_atomic(is_atomic: bool) -> Optional[transaction.Atomic]:
+def maybe_atomic(is_atomic: bool):
     if is_atomic:
-        with transaction.atomic() as ctx:
-            yield ctx
+        with transaction.atomic():
+            yield
     else:
-        yield None
+        yield
 
 
 class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):

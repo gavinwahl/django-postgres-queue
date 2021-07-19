@@ -4,7 +4,7 @@ from shutil import rmtree
 
 from setuptools import setup, Command
 
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 
