@@ -2,13 +2,15 @@ import datetime
 from typing import Any, Iterable, Optional, Tuple
 
 from django.contrib.auth.models import Group
-from django.db.transaction import atomic
+from django.db import transaction
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
 from pgq.decorators import task, JobMeta
+from pgq.exceptions import PgqException
 from pgq.models import Job, DEFAULT_QUEUE_NAME
 from pgq.queue import AtLeastOnceQueue, AtMostOnceQueue, BaseQueue, Queue
+from pgq.commands import Worker
 
 from .models import AltJob
 
@@ -182,7 +184,7 @@ class PgqQueueTests(TestCase):
         self.assertEqual(AltJob.objects.count(), 0)
 
 
-class PgqNotifyTests(TransactionTestCase):
+class PgqTransactionTests(TransactionTestCase):
     def test_notify_and_listen(self) -> None:
         """
         After `listen()`, `enqueue()` makes a notification
@@ -221,7 +223,7 @@ class PgqNotifyTests(TransactionTestCase):
         )
         queue2.listen()
 
-        with atomic():
+        with transaction.atomic():
             queue.enqueue("demotask", {"count": 5})
             queue.enqueue("demotask", {"count": 5})
 
@@ -270,3 +272,131 @@ class PgqNotifyTests(TransactionTestCase):
         retryjob = Job.objects.all()[0]
         self.assertNotEqual(originaljob.id, retryjob.id)
         self.assertEqual(retryjob.args["meta"]["retries"], 1)
+
+    def test_atleastonce_retry_during_on_commit_failure(self) -> None:
+        """Raising an error in on_commit doesn't retry the job.
+
+        This test is more documentation showing what may be considered
+        surprising behaviour. The behaviour is due to the transaction
+        being committed before the exception is raised (so the job has
+        already been popped from the db as successful).
+        """
+        queue = AtLeastOnceQueue(tasks={})
+
+        @task(queue, max_retries=2)
+        def failuretask(queue: Queue, job: Job, args: Any, meta: JobMeta) -> None:
+            transaction.on_commit(lambda: 1 / 0)
+            return None
+
+        failuretask.enqueue({})
+        self.assertEqual(Job.objects.count(), 1)
+
+        with self.assertRaises(PgqException):
+            queue.run_once()
+
+        # The job has been completed and will not be retried despite the
+        # error raised in the `on_commit()` callback.
+        self.assertEqual(Job.objects.count(), 0)
+
+    def test_atleastonce_on_commit_failure(self) -> None:
+        """Raising an error in on_commit doesn't retry the job.
+
+        This test is more documentation showing what may be considered
+        surprising behaviour. The behaviour is due to the transaction
+        being committed before the exception is raised (so the job has
+        already been popped from the db as successful).
+        """
+        def failuretask(queue: Queue, job: Job):
+            transaction.on_commit(lambda: 1 / 0)
+            return None
+
+        queue = AtLeastOnceQueue(tasks={"failuretask": failuretask}, queue="machinea")
+
+        queue.enqueue("failuretask")
+        self.assertEqual(Job.objects.count(), 1)
+
+        with self.assertRaises(PgqException):
+            queue.run_once()
+
+        # The job has been completed and will not be retried despite the
+        # error raised in the `on_commit()` callback.
+        self.assertEqual(Job.objects.count(), 0)
+
+    def test_worker_on_commit_failure(self) -> None:
+        """An error raised in ``run_once()`` doesn't crash the worker.
+
+        This is triggered using an ``on_commit()`` callback to create an
+        error at the outer most ``transaction.atomic()`` site (in
+        ``_run_once()`` for ``AtLeastOnceQueue``).
+        """
+        queue_name = "machine_a"
+
+        def failuretask(queue: Queue, job: Job):
+            transaction.on_commit(lambda: 1 / 0)
+            return None
+
+        test_queue = AtLeastOnceQueue(tasks={"failuretask": failuretask}, queue=queue_name)
+
+        test_queue.enqueue("failuretask")
+        self.assertEqual(Job.objects.count(), 1)
+
+        class TestWorker(Worker):
+            queue = test_queue
+            _shutdown = False
+
+        worker = TestWorker()
+
+        worker.run_available_tasks()
+        # The error in the `on_commit()` callback is triggered after the
+        # transaction is committed so the job has been removed from the
+        # queue.
+        self.assertEqual(Job.objects.count(), 0)
+
+    def test_atleastonce_run_once_is_atomic(self) -> None:
+        """``AtLeastOnceQueue`` runs in an atomic block.
+
+        Database operations are rolled back on failure. Job remains in queue.
+        """
+        group_name = "test_group"
+
+        def failuretask(queue: Queue, job: Job):
+            Group.objects.create(name=group_name)
+            raise Exception()
+
+        queue = AtLeastOnceQueue(tasks={"failuretask": failuretask}, queue="machinea")
+
+        queue.enqueue("failuretask")
+        self.assertEqual(Job.objects.count(), 1)
+
+        with self.assertRaises(PgqException):
+            queue.run_once()
+
+        self.assertEqual(Group.objects.filter(name=group_name).count(), 0)
+        # The job has been completed and will not be retried despite the
+        # error raised in the `on_commit()` callback.
+        self.assertEqual(Job.objects.count(), 1)
+
+    def test_atmostonce_run_once_is_not_atomic(self) -> None:
+        """``AtMostOnceQueue`` does not run in an atomic block.
+
+        Database operations are persisted despite failure. Job is removed from
+        queue.
+        """
+        group_name = "test_group"
+
+        def failuretask(queue: Queue, job: Job):
+            Group.objects.create(name=group_name)
+            raise Exception()
+
+        queue = AtMostOnceQueue(tasks={"failuretask": failuretask}, queue="machinea")
+
+        queue.enqueue("failuretask")
+        self.assertEqual(Job.objects.count(), 1)
+
+        with self.assertRaises(PgqException):
+            queue.run_once()
+
+        self.assertEqual(Group.objects.filter(name=group_name).count(), 1)
+        # The job has been completed and will not be retried despite the
+        # error raised in the `on_commit()` callback.
+        self.assertEqual(Job.objects.count(), 0)
