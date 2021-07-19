@@ -34,9 +34,9 @@ else:
 
 
 @contextlib.contextmanager
-def maybe_atomic(is_atomic, **atomic_kwargs):
+def maybe_atomic(is_atomic: bool) -> Optional[transaction.Atomic]:
     if is_atomic:
-        with transaction.atomic(**atomic_kwargs) as ctx:
+        with transaction.atomic() as ctx:
             yield ctx
     else:
         yield None
