@@ -3,7 +3,7 @@ django-pg-queue
 
 django-pg-queue is a task queue system for Django backed by postgres.
 
-It was forked from the wonderful and simpler django-pg-queue (https://github.com/gavinwahl/django-postgres-queue/)
+It was forked from the wonderful and simpler django-postgres-queue (https://github.com/gavinwahl/django-postgres-queue/)
 Written by Gavin Wahl.
 
 
