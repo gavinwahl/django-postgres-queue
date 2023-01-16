@@ -176,6 +176,7 @@ class BaseQueue(Generic[_Job], metaclass=abc.ABCMeta):
         If a job fails, ``PgqException`` is raised with the job object that
         failed stored in it.
         """
+        job = None
         try:
             with maybe_atomic(is_atomic):
                 job = self.job_model.dequeue(
