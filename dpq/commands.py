@@ -5,6 +5,8 @@ import os
 
 from django.core.management.base import BaseCommand
 from django.db import connection
+from django.utils import autoreload
+from django.utils.autoreload import raise_last_exception
 
 
 class Worker(BaseCommand):
@@ -23,6 +25,12 @@ class Worker(BaseCommand):
             '--listen',
             action='store_true',
             help="Use LISTEN/NOTIFY to wait for events."
+        )
+        parser.add_argument(
+            '--reload',
+            action='store_true',
+            dest='use_reloader',
+            help="Use the auto-reloader.",
         )
 
     def handle_shutdown(self, sig, frame):
@@ -67,15 +75,23 @@ class Worker(BaseCommand):
         self.delay = options['delay']
         self.listen = options['listen']
 
+        # Handle the signals for warm shutdown.
+        signal.signal(signal.SIGINT, self.handle_shutdown)
+        signal.signal(signal.SIGTERM, self.handle_shutdown)
+
+        self.run(**options)
+
+    def inner_run(self, **options):
+        # If an exception was silenced in ManagementUtility.execute in order
+        # to be raised in the child process, raise it now.
+        raise_last_exception()
+
         with connection.cursor() as cursor:
             cursor.execute("SET application_name TO %s", ['dpq#{}'.format(os.getpid())])
 
         if self.listen:
             self.queue.listen()
         try:
-            # Handle the signals for warm shutdown.
-            signal.signal(signal.SIGINT, self.handle_shutdown)
-            signal.signal(signal.SIGTERM, self.handle_shutdown)
 
             while True:
                 self.run_available_tasks()
@@ -83,6 +99,13 @@ class Worker(BaseCommand):
         except InterruptedError:
             # got shutdown signal
             pass
+
+    def run(self, **options):
+        """Run the worker, using the autoreloader if needed."""
+        if options['use_reloader']:
+            autoreload.run_with_reloader(self.inner_run, **options)
+        else:
+            self.inner_run(**options)
 
     def wait(self):
         if self.listen:
