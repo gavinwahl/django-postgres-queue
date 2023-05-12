@@ -90,6 +90,9 @@ class Worker(BaseCommand):
             cursor.execute("SET application_name TO %s", ['dpq#{}'.format(os.getpid())])
 
         if self.listen:
+            self.logger.info('Listening for queued tasks', extra={
+                'channel': self.queue.notify_channel,
+            })
             self.queue.listen()
         try:
 
