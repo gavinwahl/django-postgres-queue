@@ -18,6 +18,7 @@ class BaseJob(models.Model):
     )
     task = models.CharField(max_length=255)
     args = JSONField()
+    failed = models.BooleanField(default=False)
 
     class Meta:
         indexes = [
@@ -29,7 +30,7 @@ class BaseJob(models.Model):
         return '%s: %s' % (self.id, self.task)
 
     @classmethod
-    def dequeue(cls, exclude_ids=[]):
+    def dequeue(cls):
         """
         Claims the first available task and returns it. If there are no
         tasks available, returns None.
@@ -49,7 +50,7 @@ class BaseJob(models.Model):
                 SELECT id
                 FROM {db_table}
                 WHERE execute_at <= now()
-                  AND NOT id = ANY(%s)
+                  AND failed = false
                 ORDER BY priority DESC, created_at
                 FOR UPDATE SKIP LOCKED
                 LIMIT 1
@@ -58,7 +59,6 @@ class BaseJob(models.Model):
             """.format(
                 db_table=connection.ops.quote_name(cls._meta.db_table),
             ),
-            [list(exclude_ids)]
         ))
         assert len(tasks) <= 1
         if tasks:
@@ -74,6 +74,7 @@ class BaseJob(models.Model):
             'priority': self.priority,
             'task': self.task,
             'args': self.args,
+            'failed': self.failed,
         }
 
 class Job(BaseJob):
