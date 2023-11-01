@@ -36,20 +36,19 @@ class Worker(BaseCommand):
         """
         Runs tasks continuously until there are no more available.
         """
-        # Prevents tasks that failed from blocking others.
-        failed_tasks = set()
         while True:
             self._in_task = True
-            result = self.queue.run_once(exclude_ids=failed_tasks)
+            result = self.queue.run_once()
             job, retval, exc = result or (None, None, None)
             if exc:
                 if job:
+                    job.failed = True
+                    job.save(update_fields=["failed"])
                     self.logger.exception('Error in %r: %r.', job, exc, extra={
                         'data': {
                             'job': job.to_json(),
                         },
                     })
-                    failed_tasks.add(job.id)
                 else:
                     # This is an exception before a task could even be
                     # retrieved, so it's probably fatal
