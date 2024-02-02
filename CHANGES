@@ -1,3 +1,9 @@
+0.8.2 (2024-02-01)
+==================
+
+- Ensures run_once always has a job variable thanks @myers
+
+
 0.8.1 (2021-07-19)
 ==================
 
