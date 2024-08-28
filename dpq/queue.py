@@ -57,14 +57,22 @@ class Queue(object, metaclass=abc.ABCMeta):
             cur.execute('LISTEN "{}";'.format(self.notify_channel))
 
     def wait(self, timeout=30):
-        connection.connection.poll()
-        notifies = self.filter_notifies()
-        if notifies:
-            return notifies
+        if hasattr(connection.connection, 'poll'):
+            # psycopg2
+            connection.connection.poll()
+            notifies = self.filter_notifies()
+            if notifies:
+                return notifies
 
-        select.select([connection.connection], [], [], timeout)
-        connection.connection.poll()
-        return self.filter_notifies()
+            select.select([connection.connection], [], [], timeout)
+            connection.connection.poll()
+            return self.filter_notifies()
+        else:
+            # psycopg3
+            for notify in connection.connection.notifies(timeout=timeout):
+                return [notify]
+            else:
+                return []
 
     def filter_notifies(self):
         notifies = [
